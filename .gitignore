@@ -24,3 +24,14 @@ scripts/prepare-fonts.py
 scripts/visual-compare.py
 scripts/browser-test.mjs
 scripts/browser-edge-test.mjs
+
+# Private ADB helper: keeps phone awake during capture sessions.
+scripts/phone-guard.sh
+
+# Local-only dataset collection and validation.
+scripts/collect-datasets.py
+scripts/validate-datasets.ts
+scripts/collect-beijing.py
+scripts/import-tracks.py
+scripts/validate-beijing.py
+scripts/validate-beijing.ts

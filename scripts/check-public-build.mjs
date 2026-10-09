@@ -44,7 +44,7 @@ for(const rel of files){
  if(rel.endsWith('.woff2')&&!Object.values(approved).includes(sha))throw Error('Unknown font bytes: '+rel);
  if(/\.(js|css|json|html|svg|md|txt|wxml|wxss)$/.test(rel)){
   const text=b.toString();
-  if(ids.some(id=>text.includes(id))||/static\/research|VIAS_RESEARCH=1|\/Users\/|data\/imports|phone-debug|sourcesContent/.test(text))throw Error('Private identifier/path: '+rel);
+  if(ids.some(id=>text.includes(id))||/static\/research|VIAS_RESEARCH=1|\/Users\/|data\/(?:imports|sixfoot|open-datasets)|collect-datasets|collection-plan|phone-debug|sourcesContent/.test(text))throw Error('Private identifier/path: '+rel);
   if(process.argv.includes('--public')&&/(?:["'=(:])\s*\/(?:static|assets|map)\/[A-Za-z0-9_{]/.test(text))throw Error('Root-path leak: '+rel);
  }
  seen.add(rel);
