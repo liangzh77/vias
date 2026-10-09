@@ -51,7 +51,7 @@ PREVIEW_URL=http://127.0.0.1:8787/vias/ node scripts/deploy-browser-test.mjs
 
 ## 实际发布记录
 
-2026-10-09 发布至 **https://liangz77.cn/vias/**，版本 `20261009T051547Z`；Phase A 独立 Gate 已批准，Phase B 已获协调者授权。应用包未改变，最终线上独立验收仍待进行。
+2026-10-09 发布至 **https://liangz77.cn/vias/**，版本 `20261009T051547Z`；Phase A 独立 Gate 已批准，Phase B 已获协调者授权。应用包未改变；最终线上独立复核已由独立模型（Astra high）通过，**仅覆盖本次公开合成演示部署所验证的范围**，不代表完整应用或全功能验收。
 
 - `current`：`releases/20261009T051547Z`（首次发布，无旧 current）。
 - 包 SHA-256：`304ab53bf3edbf40f30e489b7490720403a590f4aa64fb0cc1c90585a45a2e90`。
@@ -62,7 +62,15 @@ PREVIEW_URL=http://127.0.0.1:8787/vias/ node scripts/deploy-browser-test.mjs
 - 全新 Chrome context 验证首页→线路→详情、示例标识、收藏、自造 GPX 导入导出及持久化、字体图片、无越界同源请求或运行时异常。强制 OSM 503 时保留轨迹与失败提示；另一次无拦截观测 6 张 OSM 瓦片 200，不承诺外部网络持续可用。
 - 主站、private、Fleeting、HairPlay 共 12 项 HTTP/稳定资源基线完全一致；另行 Chrome 检查四个入口 200、无运行时异常。没有重启应用或操作手机。
 
-服务器保留受限目录 `/srv/sites/liangz77.cn/vias/.deploy-20261009T051547Z`（700），内含本次核对过的工具、包和 manifest，不在 file_server 根内。后续复核可在该目录运行 `python3 release.py verify-tree ../current manifest.json` 和 `python3 release.py verify-http https://liangz77.cn/vias/ manifest.json`。
+服务器保留受限目录 `/srv/sites/liangz77.cn/vias/.deploy-20261009T051547Z`（700），内含本次核对过的工具、包和 manifest，不在 file_server 根内。后续复核可在该目录运行 `python3 release.py verify-http https://liangz77.cn/vias/ manifest.json`。
+
+勘误：`verify-tree` **拒绝把软链当作根**，所以不要对 `../current` 调用它；先 `readlink ../current` 确认指向，再把**真实发布目录**（本次为 `../releases/20261009T051547Z`）传给 `verify-tree`：
+
+```sh
+cd /srv/sites/liangz77.cn/vias/.deploy-20261009T051547Z
+readlink ../current   # 期望 releases/20261009T051547Z
+python3 release.py verify-tree ../releases/20261009T051547Z manifest.json
+```
 
 首次发布撤销须由运维授权：同时持有发布根 `.site-transaction.lock` 与 `.publish.lock`，确认 current 仍为上述版本、实际配置仍为上述新哈希、旧备份哈希仍为上述原哈希；用保留的 `config-transaction.py` 执行下列 CAS 恢复（备份输出路径必须全新），成功后再次核对 current 并只移除该软链，恢复未发布状态。任何哈希/链接变化则停止，不覆盖其他发布者。不要删除 release 或备份，以便恢复本版本。
 
