@@ -1,0 +1,26 @@
+node_modules/
+client/dist/
+tools/
+artifacts/
+data/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Private phone research and third-party assets: never publish.
+client/src/core/routes.json
+client/src/static/research/
+PLAN.md
+STATUS.md
+docs/VALIDATION.md
+docs/data-provenance.json
+scripts/phone.py
+scripts/prepare-data.py
+scripts/prepare-fonts.py
+scripts/visual-compare.py
+scripts/browser-test.mjs
+scripts/browser-edge-test.mjs

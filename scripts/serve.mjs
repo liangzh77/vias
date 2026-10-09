@@ -1,0 +1,8 @@
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import {tileRequest} from './map-proxy.mjs';
+const root=path.resolve('client/dist/build/h5');
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.json':'application/json','.woff2':'font/woff2','.ico':'image/x-icon'};
+function handle(req,res){if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}let rel;try{rel=decodeURIComponent(new URL(req.url,'http://localhost').pathname);}catch{res.writeHead(400);return res.end();}if(rel.split('/').some(s=>s==='..'||s.startsWith('.'))){res.writeHead(403);return res.end();}if(rel.startsWith('/map/tiles/')){void tileRequest(rel,res,req.method);return;}if(rel==='/')rel='/index.html';let f=path.resolve(root,'.'+rel);if(!f.startsWith(root+path.sep)){res.writeHead(403);return res.end();}fs.stat(f,(err,s)=>{if(err||!s.isFile()){res.writeHead(404,{'Content-Type':'text/plain'});return res.end('Not found');}res.writeHead(200,{'Content-Type':mime[path.extname(f)]||'application/octet-stream','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'});if(req.method==='HEAD')return res.end();fs.createReadStream(f).pipe(res);});}
+for(const host of ['127.0.0.1',process.env.TAILSCALE_BIND].filter(Boolean)){const server=http.createServer(handle);server.listen(8776,host,()=>console.log(`Vias preview http://${host}:8776`));server.on('error',e=>{console.error(e);process.exitCode=1;});}
