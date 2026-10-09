@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev:h5": "uni --host 127.0.0.1 --port 8776",
+    "build:public": "node ../scripts/build-public.mjs",
     "build:h5": "uni build",
     "postbuild:h5": "node ../scripts/check-public-build.mjs h5",
     "build:mp-weixin": "uni build -p mp-weixin",

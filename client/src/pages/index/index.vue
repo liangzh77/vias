@@ -109,10 +109,11 @@ import {ref,computed,watch,onMounted,onBeforeUnmount} from 'vue';
 import TrackMap from '../../components/TrackMap.vue';import Icon from '../../components/Icon.vue';
 import rawRoutes from 'virtual:vias-catalog';
 const research=__VIAS_RESEARCH__;
-const asset=(name:string)=>research?`/static/research/${name}.jpg`:`/static/demo/${name}.png`;
+const prefix=import.meta.env.BASE_URL || '/';
+const asset=(name:string)=>prefix+(research?`static/research/${name}.jpg`:`static/demo/${name}.png`);
 import {type Route,type Point,parseGpx,exportGpx,exportKml,durationLabel,distance,metrics,makeRoute,Recorder,xmlEscape} from '../../core/track';
 type Page='home'|'routes'|'search'|'detail'|'record'|'plan'|'profile'|'library'|'favorites'|'history'|'destinations'|'photos'|'circles'|'settings';
-const officialRoutes=rawRoutes as Route[];
+const officialRoutes=(rawRoutes as Route[]).map(r=>({...r,cover:r.cover&&/^\/?static\//.test(r.cover)?prefix+r.cover.replace(/^\//,''):r.cover}));
 function readStore<T>(key:string,fallback:T):T{try{const value=uni.getStorageSync('vias:'+key);return value?JSON.parse(value):fallback;}catch{return fallback;}}
 function saveStore(key:string,value:unknown){try{uni.setStorageSync('vias:'+key,JSON.stringify(value));return true;}catch{toast('保存失败：本地存储空间不足，请先导出备份');return false;}}
 const localRoutes=ref<Route[]>(readStore('routes',[])),favorites=ref<string[]>(readStore('favorites',[])),history=ref<string[]>(readStore('history',[])),notes=ref<Record<string,string>>(readStore('notes',{})),groups=ref<string[]>(readStore('groups',[]));

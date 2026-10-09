@@ -13,7 +13,7 @@
     "maxEle": 260,
     "maxSpeed": 0,
     "source": "数学合成示例；非真实道路，不可用于导航",
-    "cover": "/static/demo/route-demo-loop.png",
+    "cover": "static/demo/route-demo-loop.png",
     "segments": [
       [
         {
@@ -520,7 +520,7 @@
     "maxEle": 260,
     "maxSpeed": 0,
     "source": "数学合成示例；非真实道路，不可用于导航",
-    "cover": "/static/demo/route-demo-ridge.png",
+    "cover": "static/demo/route-demo-ridge.png",
     "segments": [
       [
         {

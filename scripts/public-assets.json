@@ -1,0 +1,21 @@
+{
+  "static/demo/banner.png": "b9657d23c71c596e588b1eac1e3fde2a775a666f8a89b8091d72adfee7c90847",
+  "static/demo/brand.png": "f63d1a27707bcdbf9f0fc8a7b6f6b67a99830d5288caed423b518a4f13a9bd96",
+  "static/demo/entry-circle.png": "c71397771440f2dcaba077bb9f648d51c395553d27c46baee102e2752637053f",
+  "static/demo/entry-destination.png": "ef02bcefe9ad03da125099a15cd95e729012b5884a7489872d791545e49ed4fe",
+  "static/demo/entry-photo.png": "f787f4860b8edc1ccb9b12c87ebe259068e4c41dfb276659389f035b0565ca07",
+  "static/demo/entry-route.png": "82ab337c535d919cf586fec38cd25aa6e614defbf21c750d092e1035fa30059e",
+  "static/demo/footprint-1.png": "e29d47b4f2ebef910a6cb2a09ddd433b13943bfcebf251b68b7e3251d45da30f",
+  "static/demo/footprint-2.png": "5a752b4837b4fdfc7f0226add8235dd6bad1cf71b44bfe16e7782a667e430bb1",
+  "static/demo/photo-1.png": "1a63886167671b21a0b7a190cd3a2368018e28cf2ac3c3fce57b9fceff24f525",
+  "static/demo/photo-2.png": "e29d47b4f2ebef910a6cb2a09ddd433b13943bfcebf251b68b7e3251d45da30f",
+  "static/demo/photo-3.png": "5a752b4837b4fdfc7f0226add8235dd6bad1cf71b44bfe16e7782a667e430bb1",
+  "static/demo/photo-4.png": "1a63886167671b21a0b7a190cd3a2368018e28cf2ac3c3fce57b9fceff24f525",
+  "static/demo/route-demo-loop.png": "e29d47b4f2ebef910a6cb2a09ddd433b13943bfcebf251b68b7e3251d45da30f",
+  "static/demo/route-demo-ridge.png": "5a752b4837b4fdfc7f0226add8235dd6bad1cf71b44bfe16e7782a667e430bb1",
+  "static/favicon.svg": "5820538f7514825d7f325ba669c8fe0e302b6e2b0c09362ec533ffe62ceed023",
+  "static/fonts/NOTICE.md": "6bf8b71848a475441f935085dbc7554f081cbaff43fcf49dc15001965cd043d3",
+  "static/fonts/OFL.txt": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+  "static/fonts/ViasResearchCJK.woff2": "b598c308d99b61474a315277935e290157382a4793d97133bf376b74926824bb",
+  "static/fonts/ViasResearchLatin.woff2": "e0824fde740f2240b866bd29e5e6772ee07a68d1e5fd894310332d1f36a52306"
+}

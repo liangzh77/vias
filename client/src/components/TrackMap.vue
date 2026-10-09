@@ -6,7 +6,7 @@
   <!-- #ifdef MP-WEIXIN -->
   <map class="map-canvas" :latitude="center.lat" :longitude="center.lon" :scale="12" :polyline="nativeLines" :show-location="true" @tap="nativeTap" />
   <!-- #endif -->
-  <view class="map-credit">{{ tiles ? (tileError ? '底图加载失败 · 轨迹仍可查看' : '© OpenStreetMap contributors') : '仅轨迹视图 · 无地形底图' }}</view>
+  <view class="map-credit">{{ tiles ? (tileError ? '© OpenStreetMap contributors · 底图加载失败，轨迹仍可查看' : '© OpenStreetMap contributors') : '仅轨迹视图 · 无地形底图' }}</view>
  </view>
 </template>
 <script setup lang="ts">
@@ -27,7 +27,7 @@ let map:L.Map|undefined, lines:L.LayerGroup|undefined, base:L.TileLayer|undefine
 function draw(fit=true){if(!map||!lines)return;lines.clearLayers();for(const seg of props.segments){if(!seg.length)continue;const pts=seg.map(p=>[p.lat,p.lon] as L.LatLngTuple);L.polyline(pts,{color:'#fff',weight:8,opacity:.9}).addTo(lines);L.polyline(pts,{color:'#00bd74',weight:4}).addTo(lines);}
 const points=props.segments.flat();if(points.length){for(const [i,label,color] of [[0,'起','#00bb78'],[points.length-1,'终','#ff664a']] as const){const p=points[i];L.marker([p.lat,p.lon],{icon:L.divIcon({className:'track-marker',html:`<div class="track-marker-label" style="background:${color}">${label}</div>`,iconSize:[24,24],iconAnchor:[12,12]})}).addTo(lines);}if(fit)map.fitBounds(L.latLngBounds(points.map(p=>[p.lat,p.lon] as L.LatLngTuple)),{padding:[36,50],maxZoom:16});}
 (props.waypoints||[]).forEach((p,i)=>L.circleMarker([p.lat,p.lon],{color:'#fff',weight:2,fillColor:'#fb6874',fillOpacity:1,radius:4}).bindTooltip(`标注点 ${i+1}`).addTo(lines!));}
-function setTiles(){if(!map)return;if(base)map.removeLayer(base);tileError.value=false;if(props.tiles){base=L.tileLayer(import.meta.env.PROD?'/map/tiles/{z}/{x}/{y}.png':'https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap contributors'});base.on('tileerror',()=>tileError.value=true);base.addTo(map);}}
+function setTiles(){if(!map)return;if(base)map.removeLayer(base);tileError.value=false;if(props.tiles){base=L.tileLayer(__VIAS_RESEARCH__&&import.meta.env.PROD?'/map/tiles/{z}/{x}/{y}.png':'https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap contributors'});base.on('tileerror',()=>tileError.value=true);base.addTo(map);}}
 function updatePosition(){if(!map)return;if(dot)map.removeLayer(dot);if(props.position)dot=L.circleMarker([props.position.lat,props.position.lon],{color:'#fff',weight:3,fillColor:'#248dff',fillOpacity:1,radius:8}).addTo(map);}
 onMounted(async()=>{await nextTick();if(!host.value)return;map=L.map(host.value,{zoomControl:false,attributionControl:false,fadeAnimation:false}).setView([center.value.lat,center.value.lon],12);lines=L.layerGroup().addTo(map);setTiles();draw();map.on('click',e=>{if(props.editable)emit('point',{lat:e.latlng.lat,lon:e.latlng.lng});});observer=new ResizeObserver(()=>map?.invalidateSize());observer.observe(host.value);updatePosition();});
 watch(()=>props.segments,()=>draw(!props.editable),{deep:true});watch(()=>props.waypoints,()=>draw(false),{deep:true});watch(()=>props.tiles,setTiles);watch(()=>props.position,updatePosition,{deep:true});
