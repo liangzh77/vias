@@ -14,9 +14,42 @@ const button=text=>page.locator('uni-button').filter({hasText:text}).last();
 try{
  await page.goto(base);await page.waitForSelector('.home-head');await page.evaluate(()=>document.fonts.ready);
  await page.screenshot({path:out+'/01-home.png'});
- await page.locator('.home-entries uni-button').first().click();assert.equal(await page.locator('.route-card').count(),2);
- assert.match(await page.locator('.route-card').first().innerText(),/合成示例/);
- await page.locator('.route-card').first().click();await page.waitForSelector('.track-marker-label');
+ await page.locator('.home-entries uni-button').first().click();assert.equal(await page.locator('.route-card').count(),12);
+ assert.match(await page.locator('.route-card').first().innerText(),/西山三峰路线/);
+ assert.match(await page.locator('.route-card').first().innerText(),/OpenStreetMap 贡献者/);
+ // OpenStreetMap route: ODbL/SRTM attribution, honest time stats, offline tile fallback with vectors kept.
+ await page.locator('.route-card').first().click();await page.waitForSelector('.source-card');
+ assert.match(await page.locator('.source-card').innerText(),/ODbL 1\.0/);
+ assert.match(await page.locator('.source-card').innerText(),/SRTM 90 m/);
+ assert.match(await page.locator('.stats-grid').innerText(),/用时未记录/);
+ await page.waitForFunction(()=>document.querySelector('.map-credit')?.textContent.includes('加载失败'));
+ assert.ok(await page.locator('.leaflet-overlay-pane path').count()>0);assert.ok(tiles.length>0);
+ await page.screenshot({path:out+'/02-detail-osm-offline.png'});
+ // A KML/GPX export without the ODbL licence and source relation is a real redistribution defect.
+ await page.locator('.detail-actions uni-button').nth(3).click();
+ const [osmGpx]=await Promise.all([page.waitForEvent('download'),page.locator('.export-option').first().click()]);
+ assert.equal(osmGpx.suggestedFilename(),'osm-16205150.gpx');
+ const osmGpxText=fs.readFileSync(await osmGpx.path(),'utf8');
+ assert.match(osmGpxText,/<license>https:\/\/opendatacommons\.org\/licenses\/odbl\/1-0\/<\/license>/);
+ assert.ok(osmGpxText.includes('ODbL 1.0'));
+ assert.ok(osmGpxText.includes('https://www.openstreetmap.org/relation/16205150'));
+ assert.ok(osmGpxText.includes('<ele>'));
+ await page.locator('.sheet-head uni-button').click();
+ await page.locator('.detail-actions uni-button').nth(3).click();
+ const [osmKml]=await Promise.all([page.waitForEvent('download'),page.locator('.export-option').nth(1).click()]);
+ assert.equal(osmKml.suggestedFilename(),'osm-16205150.kml');
+ const osmKmlText=fs.readFileSync(await osmKml.path(),'utf8');
+ assert.match(osmKmlText,/<atom:link rel="license" href="https:\/\/opendatacommons\.org\/licenses\/odbl\/1-0\/"\/>/);
+ assert.ok(osmKmlText.includes('ODbL 1.0'));
+ assert.ok(osmKmlText.includes('https://www.openstreetmap.org/relation/16205150'));
+ assert.ok(osmKmlText.includes('<coordinates>'));
+ fs.writeFileSync(out+'/osm-export.gpx',osmGpxText);fs.writeFileSync(out+'/osm-export.kml',osmKmlText);
+ await page.locator('.sheet-head uni-button').click();
+ await page.getByLabel('返回',{exact:true}).click();
+ // The synthetic example keeps the waypoint markers used by the remaining checks.
+ const demo=page.locator('.route-card').filter({hasText:'合成示例环线'});
+ assert.match(await demo.innerText(),/合成示例/);
+ await demo.click();await page.waitForSelector('.track-marker-label');
  assert.match(await page.locator('.source-card').innerText(),/非真实道路/);
  await page.waitForFunction(()=>document.querySelector('.map-credit')?.textContent.includes('加载失败'));
  assert.ok(await page.locator('.leaflet-overlay-pane path').count()>0);assert.ok(tiles.length>0);
@@ -38,7 +71,8 @@ try{
  assert.ok(fonts.filter(f=>f.family.startsWith('Vias')).every(f=>f.status==='loaded'));
  assert.ok(requests.some(r=>r.endsWith('.woff2')));
  assert.ok(requests.some(r=>r.includes('route-demo-loop.png')));
+ assert.ok(requests.some(r=>r.includes('static/osm/16205150.png')));
  assert.deepEqual(errors,[]);assert.deepEqual(bad,[]);
- fs.writeFileSync(out+'/report.json',JSON.stringify({status:'passed',base,errors,bad,requests,fonts,tiles,checks:['home/routes/detail','synthetic labels','favorite','GPX export/import/persistence','fonts and images','same-origin prefix','OSM failure vector fallback']},null,2));
+ fs.writeFileSync(out+'/report.json',JSON.stringify({status:'passed',base,errors,bad,requests,fonts,tiles,checks:['home/routes/detail','OSM catalog first','ODbL/SRTM attribution','GPX and KML exports keep licence, author and source','honest unrecorded time stats','synthetic labels','favorite','GPX export/import/persistence','fonts and images','same-origin prefix','OSM failure vector fallback']},null,2));
  console.log('BROWSER_OK '+out);
 }catch(e){await page.screenshot({path:out+'/failure.png'});fs.writeFileSync(out+'/report.json',JSON.stringify({status:'failed',error:String(e),errors,bad,requests},null,2));throw e;}finally{await browser.close();}

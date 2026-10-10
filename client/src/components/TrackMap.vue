@@ -6,7 +6,7 @@
   <!-- #ifdef MP-WEIXIN -->
   <map class="map-canvas" :latitude="center.lat" :longitude="center.lon" :scale="12" :polyline="nativeLines" :show-location="true" @tap="nativeTap" />
   <!-- #endif -->
-  <view class="map-credit">{{ tiles ? (tileError ? '© OpenStreetMap contributors · 底图加载失败，轨迹仍可查看' : '© OpenStreetMap contributors') : '仅轨迹视图 · 无地形底图' }}</view>
+  <view class="map-credit" :class="{linkable:tiles}" @click="openCopyright">{{ tiles ? (tileError ? '© OpenStreetMap contributors · 底图加载失败，轨迹仍可查看' : '© OpenStreetMap contributors') : '仅轨迹视图 · 无地形底图' }}</view>
  </view>
 </template>
 <script setup lang="ts">
@@ -18,6 +18,16 @@ import 'leaflet/dist/leaflet.css';
 // #endif
 const props=withDefaults(defineProps<{segments:Point[][];waypoints?:Point[];tiles?:boolean;editable?:boolean;position?:Point|null}>(),{tiles:true,editable:false});
 const emit=defineEmits<{(e:'point',p:Point):void}>();
+const COPYRIGHT_URL='https://www.openstreetmap.org/copyright';
+function openCopyright(){
+ if(!props.tiles)return;
+ // #ifdef H5
+ window.open(COPYRIGHT_URL,'_blank','noopener');
+ // #endif
+ // #ifndef H5
+ uni.setClipboardData({data:COPYRIGHT_URL,success:()=>uni.showToast({title:'已复制版权链接',icon:'none'})});
+ // #endif
+}
 const host=ref<HTMLElement>();const tileError=ref(false);
 const center=computed(()=>props.segments.flat()[0]||{lat:39.993587,lon:116.196528});
 const nativeLines=computed(()=>props.segments.map(s=>({points:s.map(p=>({latitude:p.lat,longitude:p.lon})),color:'#00be78',width:5})));
@@ -51,5 +61,6 @@ if(map&&props.position)map.setView([props.position.lat,props.position.lon],16);
 defineExpose({fit,zoom,locate});
 </script>
 <style>
-.map-shell{height:100%;width:100%;position:relative;background:#e0e5dc}.map-canvas{height:100%;width:100%;z-index:0;background-color:#dce2d5;background-image:repeating-radial-gradient(ellipse at 25% 50%,transparent 0px,transparent 32px,#c9d4c844 33px,#c9d4c844 34px)}.map-credit{position:absolute;bottom:22px;right:5px;padding:2px 4px;background:#ffffffd9;font-size:9px;color:#555;z-index:2;pointer-events:none}:deep(.track-marker-label){display:block;width:24px;height:24px;line-height:24px;text-align:center;color:white;border:2px solid white;border-radius:50%;font-size:12px;box-shadow:0 1px 4px #3335}.leaflet-container{font-family:inherit}:deep(.leaflet-tile){mix-blend-mode:normal}
+.map-shell{height:100%;width:100%;position:relative;background:#e0e5dc}.map-canvas{height:100%;width:100%;z-index:0;background-color:#dce2d5;background-image:repeating-radial-gradient(ellipse at 25% 50%,transparent 0px,transparent 32px,#c9d4c844 33px,#c9d4c844 34px)}.map-credit{position:absolute;bottom:22px;right:5px;padding:2px 4px;background:#ffffffd9;font-size:9px;color:#555;z-index:2;pointer-events:none}
+.map-credit.linkable{pointer-events:auto;cursor:pointer;text-decoration:underline}:deep(.track-marker-label){display:block;width:24px;height:24px;line-height:24px;text-align:center;color:white;border:2px solid white;border-radius:50%;font-size:12px;box-shadow:0 1px 4px #3335}.leaflet-container{font-family:inherit}:deep(.leaflet-tile){mix-blend-mode:normal}
 </style>

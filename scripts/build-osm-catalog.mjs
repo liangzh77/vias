@@ -19,6 +19,12 @@ import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const osmDir = path.join(root, 'data/open-datasets/beijing/osm');
 const cachePath = path.join(root, 'artifacts/osm-elevation-cache.json');
+// Elevation must be chosen explicitly: a silent default previously dropped every <ele>
+// value and the ascent/descent statistics while still producing a plausible catalogue.
+if (!process.argv.includes('--elevation') && !process.argv.includes('--no-elevation')) {
+  console.error('Refusing to run: pass --elevation (SRTM sampling, cached) or --no-elevation explicitly.');
+  process.exit(2);
+}
 const wantElevation = process.argv.includes('--elevation');
 const proxy = process.env.VIAS_HTTP_PROXY || '';
 
@@ -270,6 +276,8 @@ for (const entry of SELECTION) {
       ? '路线数据 © OpenStreetMap 贡献者（ODbL 1.0）；海拔取自 SRTM 90 m（NASA/USGS，公有领域）采样插值，非实测；未经实走验证，不可导航'
       : '路线数据 © OpenStreetMap 贡献者（ODbL 1.0）；未经实走验证，不可导航',
     sourceUrl: `https://www.openstreetmap.org/relation/${entry.id}`,
+    license: 'ODbL 1.0',
+    licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
     cover: `static/osm/${entry.id}.png`,
     segments,
     waypoints: [],

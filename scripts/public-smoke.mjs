@@ -1,5 +1,5 @@
 import {chromium} from '../client/node_modules/playwright/index.mjs';
-import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';import fs from 'node:fs';
 const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE}:{})});
 try{
  const context=await browser.newContext({viewport:{width:384,height:783}});
@@ -30,6 +30,23 @@ try{
  await page.locator('.detail-actions uni-button').nth(3).click();
  const [download]=await Promise.all([page.waitForEvent('download'),page.locator('.export-option').first().click()]);
  assert.equal(download.suggestedFilename(),'osm-16205150.gpx');
+ const gpxPath=await download.path();const gpx=fs.readFileSync(gpxPath,'utf8');
+ assert.match(gpx,/<license>https:\/\/opendatacommons\.org\/licenses\/odbl\/1-0\/<\/license>/);
+ assert.match(gpx,/<copyright author="OpenStreetMap 贡献者">/);
+ assert.ok(gpx.includes('ODbL 1.0'));
+ assert.ok(gpx.includes('https://www.openstreetmap.org/relation/16205150'));
+ assert.ok(gpx.includes('<ele>'));
+ // KML must keep the same attribution and licence; a missing one is a real ODbL defect.
+ await page.locator('.sheet-head uni-button').click();
+ await page.locator('.detail-actions uni-button').nth(3).click();
+ const [kmlDownload]=await Promise.all([page.waitForEvent('download'),page.locator('.export-option').nth(1).click()]);
+ assert.equal(kmlDownload.suggestedFilename(),'osm-16205150.kml');
+ const kml=fs.readFileSync(await kmlDownload.path(),'utf8');
+ assert.match(kml,/<atom:link rel="license" href="https:\/\/opendatacommons\.org\/licenses\/odbl\/1-0\/"\/>/);
+ assert.match(kml,/<atom:name>OpenStreetMap 贡献者<\/atom:name>/);
+ assert.ok(kml.includes('ODbL 1.0'));
+ assert.ok(kml.includes('https://www.openstreetmap.org/relation/16205150'));
+ assert.ok(kml.includes('<coordinates>'));
  // Close the export sheet, then go back and open the synthetic example.
  await page.locator('.sheet-head uni-button').click();
  await page.locator('.map-back').click();
@@ -38,5 +55,5 @@ try{
  assert.match(await page.locator('.source-card').innerText(),/非真实道路/);
  assert.equal(await page.locator('.track-marker-label').first().evaluate(e=>getComputedStyle(e).borderRadius),'50%');
  assert.deepEqual(errors,[]);assert.deepEqual(failedAssets,[]);
- console.log('Public browser smoke passed: OSM catalog first, ODbL/SRTM attribution, honest time stats, favorite, GPX download, synthetic example markers.');
+ console.log('Public browser smoke passed: OSM catalog first, ODbL/SRTM attribution in UI, GPX and KML exports, honest time stats, favorite, synthetic example markers.');
 }finally{await browser.close();}
