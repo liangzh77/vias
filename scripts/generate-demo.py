@@ -22,11 +22,9 @@ def landscape(name, variant=0, heading=None):
     d.line([(360,600),(440,510),(390,445),(500+variant*20,360)],fill='#f8e6b9',width=8)
     if heading:d.text((55,60),heading,font=font(48),fill='white');d.text((58,125),'SYNTHETIC SCENERY / NOT A REAL DESTINATION',font=font(19),fill='white')
     im.save(OUT/(name+'.png'),optimize=True)
-landscape('banner',heading='VIAS / EXPLORE OUTDOORS')
-for i,n in enumerate(['footprint-1','footprint-2','photo-1','photo-2','photo-3','photo-4','route-demo-loop','route-demo-ridge']):landscape(n,i%3)
+landscape('route-demo-loop',0)
+landscape('route-demo-ridge',1)
 im=Image.new('RGB',(280,110),'white');d=ImageDraw.Draw(im);d.text((12,15),'VIAS',font=font(54),fill='#00ad78');d.text((14,77),'LOCAL TRAIL LAB',font=font(18),fill='#687d76');im.save(OUT/'brand.png')
-for name,color,letter in [('route','#00c874','R'),('destination','#17bada','D'),('photo','#ffb341','P'),('circle','#ff789a','C')]:
-    im=Image.new('RGBA',(180,180),(255,255,255,0));d=ImageDraw.Draw(im);d.ellipse((2,2,178,178),fill=color);d.text((62,45),letter,font=font(76),fill='white');im.save(OUT/f'entry-{name}.png')
 routes=[]
 for j,(id,title,place) in enumerate([('demo-loop','合成示例环线（不可导航）','示例区域 A'),('demo-ridge','合成示例山脊（不可导航）','示例区域 B')]):
     pts=[]

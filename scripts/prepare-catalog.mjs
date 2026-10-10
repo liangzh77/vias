@@ -25,7 +25,10 @@ const sampleSource = path.join(root, 'data/catalog/sample');
 const sampleDir = path.join(root, 'client/catalog-sample');
 const staticDir = path.join(root, 'client/src/static/osm');
 const previewFile = path.join(root, 'client/src/core/featured-routes.json');
-const PREVIEW_LIMIT = 10;
+// The bundled preview must cover every featured route (the pinned selection plus the four
+// featured ways): a preview that misses one would leave the home screen without its card, and
+// client/tests/catalog.test.ts holds the preview to the committed sample entry for entry.
+const PREVIEW_LIMIT = 20;
 
 const args = process.argv.slice(2);
 const exportSample = args.includes('--export-sample');

@@ -1,6 +1,6 @@
 {
   "title": "景行（Vias）OpenStreetMap 北京路线快照",
-  "generated": "2026-10-10T04:35:32.146Z",
+  "generated": "2026-10-10T08:19:00.636Z",
   "full": false,
   "source": "OpenStreetMap 北京抽取（Geofabrik beijing-latest.osm.pbf，ODbL 1.0，© OpenStreetMap 贡献者） · 示例（已提交到仓库的子集）",
   "extracted": "2026-10-09",
@@ -18,22 +18,22 @@
     "note": "海拔为公开地形瓦片采样插值，非实测、未实走验证；爬升/下降未经平滑。"
   },
   "counts": {
-    "routes": 10,
+    "routes": 14,
     "relations": 10,
-    "namedPaths": 0,
-    "points": 8998,
+    "namedPaths": 4,
+    "points": 10496,
     "shards": 1,
-    "thumbnails": 10
+    "thumbnails": 14
   },
   "index": {
     "path": "static/osm/index.json",
-    "sha256": "74e4d19e768e30ec9496fdc36af79c3328a5d144d8f2784169cbd6c5d93e06d9"
+    "sha256": "04e72ae0dc3fa7ce380045547f3d0b2540a989458f8f5ccf69ab3b9bf2c5e670"
   },
   "shards": [
     {
       "path": "static/osm/routes/shard-000.json",
-      "routes": 10,
-      "sha256": "40f67bc205800e4022c7302a69af18d65ef1d29cb5530d69e7c9fc61084f0e19"
+      "routes": 14,
+      "sha256": "a13aef9452ab0af6a202fdee5ba037205d353eace514df88dc76e12083cc8a2f"
     }
   ],
   "thumbnails": [
@@ -76,6 +76,22 @@
     {
       "path": "static/osm/19799028.png",
       "sha256": "8044013bdb26a223a3408b43d8c80eb2d8cdbbc4567210e8b5f11e172d438131"
+    },
+    {
+      "path": "static/osm/w162162027.png",
+      "sha256": "c2800029e41fabc5bcbd560e47645237a58216f8f77a19c80e6c2ec636bdd448"
+    },
+    {
+      "path": "static/osm/w55280954.png",
+      "sha256": "a9c8d5eeb63a6cdd95f9f7890cdc8782cd4cb7a43c67b79cec337dd91fb59935"
+    },
+    {
+      "path": "static/osm/w659656629.png",
+      "sha256": "9be5b553c319f597f1b89f3e723b3c2f0c3b1fd51217dca741c6756c7073411f"
+    },
+    {
+      "path": "static/osm/w92160463.png",
+      "sha256": "2d1ee4811df559070080930ab58714ca816e986d393941d7b1e321659240fe8d"
     }
   ],
   "caveats": [

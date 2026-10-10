@@ -1,0 +1,9 @@
+{
+  "note": "首屏「经典线路」用的 4 条知名北京路线：真实 OpenStreetMap 几何，ODbL 1.0（© OpenStreetMap 贡献者）。这 4 条在 scripts/build-osm-catalog.mjs 的 FEATURED_WAYS 里被固定为精选，所以元数据在首屏预览 featured-routes.json 里、缩略图在仓库示例子集 client/catalog-sample/thumbs 里：首屏不必等目录，也不必等几何分片。它们是命名路径片段，不是完整行程，未经实走验证。",
+  "ids": [
+    "osm-w92160463",
+    "osm-w659656629",
+    "osm-w162162027",
+    "osm-w55280954"
+  ]
+}

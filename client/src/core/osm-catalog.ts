@@ -6,7 +6,7 @@
 //      sorting cost no JavaScript bundle space;
 //   2. geometry shards — `static/osm/routes/shard-NNN.json`, fetched the first time a route
 //      is actually opened.
-// A small committed preview (`featured-routes.json`, 10 entries, no coordinates) is bundled
+// A small committed preview (`featured-routes.json`, the featured entries, no coordinates) is bundled
 // so the home screen and the 精选 tab have real content before the index arrives.
 import {ref} from 'vue';
 import preview from './featured-routes.json';

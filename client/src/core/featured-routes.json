@@ -157,6 +157,69 @@
         116.275214
       ],
       "featured": true
+    },
+    {
+      "id": "osm-w659656629",
+      "title": "下马威·东灵山小道",
+      "activity": "登山",
+      "place": "北京市 · 门头沟 · 东灵山",
+      "distance": 4.844,
+      "ascent": 998,
+      "descent": 38,
+      "maxEle": 2284,
+      "points": 223,
+      "start": [
+        39.998452,
+        115.434732
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-w162162027",
+      "title": "妙峰古道中道",
+      "activity": "登山",
+      "place": "北京市 · 门头沟 · 妙峰山",
+      "distance": 4.411,
+      "ascent": 626,
+      "descent": 28,
+      "maxEle": 993,
+      "points": 759,
+      "start": [
+        40.05026,
+        116.078896
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-w55280954",
+      "title": "京西古道·门潭段",
+      "place": "北京市 · 门头沟 · 京西古道",
+      "distance": 3.013,
+      "ascent": 109,
+      "descent": 334,
+      "maxEle": 588,
+      "points": 291,
+      "start": [
+        39.906287,
+        116.030717
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-w92160463",
+      "title": "箭扣西段长城",
+      "activity": "登山",
+      "place": "北京市 · 怀柔 · 箭扣长城",
+      "distance": 2.166,
+      "ascent": 380,
+      "descent": 58,
+      "maxEle": 1150,
+      "points": 225,
+      "start": [
+        40.465859,
+        116.495171
+      ],
+      "featured": true
     }
   ]
 }

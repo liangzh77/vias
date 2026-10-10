@@ -86,10 +86,24 @@ test('the bundle preview matches the catalogue it was generated from',()=>{
   assert.equal(route.pointCount,entry.points);
   assert.deepEqual(route.start,entry.start);
   assert.equal(route.segments.length,0,'首屏不得内联几何');
-  assert.match(route.cover as string,/static\/osm\/\d+\.png$/);
+  assert.match(route.cover as string,/static\/osm\/w?\d+\.png$/);
  });
  assert.equal(catalogState.value,'idle');
  assert.equal(catalogFull.value,false);
+});
+
+test('the home screen pins four real Beijing routes that the sample really carries',()=>{
+ const classic=JSON.parse(fs.readFileSync('src/core/classic-routes.json','utf8')) as {ids:string[]};
+ assert.equal(classic.ids.length,4,'首屏「经典线路」固定 4 条');
+ assert.equal(new Set(classic.ids).size,4,'首屏 4 条经典线路不得重复');
+ for(const id of classic.ids){
+  const entry=index.routes.find(r=>r.id===id);
+  assert.ok(entry,`首屏经典线路 ${id} 不在提交的示例子集里（全新克隆的首屏会缺卡）`);
+  assert.equal(entry.featured,true,`首屏经典线路 ${id} 不是精选，首屏预览里不会有它`);
+  assert.ok(osmRoutes.value.some(r=>r.id===id),`首屏预览里没有 ${id}`);
+  assert.ok(fs.existsSync(`${sampleDir}/thumbs/${id.slice('osm-'.length)}.png`),`缺少 ${id} 的缩略图`);
+  if(full)assert.equal(full.routes.find(r=>r.id===id)?.featured,true,`完整目录里 ${id} 也必须是精选`);
+ }
 });
 
 test('a failing index keeps the preview usable; bad documents never replace the list',async()=>{

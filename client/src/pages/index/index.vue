@@ -8,13 +8,22 @@
 
   <scroll-view v-if="page==='home'" scroll-y class="page-scroll with-tabs">
    <view class="home-head"><image class="brand" :src="asset('brand')" mode="aspectFit" /><button class="search-pill" @click="go('search')">搜索目的地/线路</button><button class="icon-button" aria-label="消息" @click="unavailable('消息','本地研究版没有连接六只脚账号或消息服务器。')"><Icon name="mail" :size="28" /></button></view>
-   <view class="hero-wrap"><image class="hero" :src="asset('banner')" mode="aspectFill" @click="unavailable('本地展示横幅',research?'此横幅仅作为本地视觉研究素材，不提供租车或商业活动入口。':'此图片是程序生成的原创示例插画，不对应真实地点或商业活动。')"/><text class="hero-caption">奔赴山野 自在出行</text></view>
-   <view class="home-entries"><button v-for="entry in entries" :key="entry.page" @click="go(entry.page)"><image :src="asset('entry-'+entry.asset)"/><text>{{ entry.name }}</text></button></view>
+   <!-- 公开版首屏不放任何占位插画：最上面是 4 条真实北京路线（真实几何缩略图），没有照片就留空。 -->
+   <view v-if="research" class="hero-wrap"><image class="hero" :src="asset('banner')" mode="aspectFill" @click="unavailable('本地展示横幅','此横幅仅作为本地视觉研究素材，不提供租车或商业活动入口。')"/><text class="hero-caption">奔赴山野 自在出行</text></view>
+   <template v-else>
+    <view class="section-title route-section"><text>经典线路</text><button @click="go('routes')">查看全部 ›</button></view>
+    <view class="classic-grid"><button v-for="r in classicRoutes" :key="r.id" class="classic-card" :aria-label="'打开 '+r.title" @click="openRoute(r)"><image :src="r.cover" mode="aspectFill"/><view class="classic-text"><text>{{ r.title }}</text><text class="muted">{{ r.activity }} · {{ r.distance.toFixed(2) }} 公里 · 爬升 {{ r.ascent }} m</text></view></button></view>
+    <view class="home-note">4 条知名北京路线 · 缩略图按真实 OpenStreetMap 几何绘制 · 命名路径片段不是完整行程，未经实走验证，不可导航</view>
+   </template>
+   <view class="home-entries"><button v-for="entry in entries" :key="entry.page" @click="go(entry.page)"><image v-if="research" :src="asset('entry-'+entry.asset)"/><Icon v-else :name="entry.icon" :size="30" color="#00bd7b"/><text>{{ entry.name }}</text></button></view>
    <view class="section-bar"></view>
-   <view class="section-title"><text>精选脚印</text><button @click="go('photos')"><Icon name="clock" :size="15"/> 查看更多</button></view>
-   <scroll-view scroll-x class="footprints"><view class="footprint-row"><button v-for="(photo,i) in photos" :key="photo" class="footprint-card" :aria-label="photoPlaces[i]+'的公开脚印图片'" @click="previewPhoto(i)"><image :src="photo" mode="aspectFill"/><text v-if="!research || i>1">{{ photoPlaces[i] }}</text></button></view></scroll-view>
-   <view class="section-title route-section"><text>精选线路</text><button @click="go('routes')">查看全部 ›</button></view>
-   <button v-for="r in routes.slice(0,2)" :key="r.id" class="home-route" @click="openRoute(r)"><image :src="r.cover" mode="aspectFill"/><view><text>{{ r.title }}</text><text class="muted">{{ r.activity }} · {{ r.distance.toFixed(2) }} 公里</text></view></button>
+   <view class="section-title"><text>精选脚印</text><button v-if="research" @click="go('photos')"><Icon name="clock" :size="15"/> 查看更多</button></view>
+   <scroll-view v-if="research" scroll-x class="footprints"><view class="footprint-row"><button v-for="(photo,i) in photos" :key="photo" class="footprint-card" :aria-label="photoPlaces[i]+'的公开脚印图片'" @click="previewPhoto(i)"><image :src="photo" mode="aspectFill"/><text v-if="i>1">{{ photoPlaces[i] }}</text></button></view></scroll-view>
+   <view v-else class="photo-empty"><Icon name="photo" :size="34" color="#c9c8cf"/><text>还没有照片</text><text class="muted">没有真实照片就留空：本版不内置示例照片或占位图。照片只能来自你自己的记录。</text><button @click="go('record')">去记录</button></view>
+   <template v-if="research">
+    <view class="section-title route-section"><text>精选线路</text><button @click="go('routes')">查看全部 ›</button></view>
+    <button v-for="r in routes.slice(0,2)" :key="r.id" class="home-route" @click="openRoute(r)"><image :src="r.cover" mode="aspectFill"/><view><text>{{ r.title }}</text><text class="muted">{{ r.activity }} · {{ r.distance.toFixed(2) }} 公里</text></view></button>
+   </template>
    <button class="research-link" @click="sheet='about'">本地研究 · 数据来源与功能边界</button>
   </scroll-view>
 
@@ -88,7 +97,7 @@
   </template>
 
   <scroll-view v-if="page==='destinations'" scroll-y class="page-scroll"><view class="info-strip">本地已有轨迹的目的地 · 不是全站目的地目录</view><button v-for="d in destinations" :key="d.place" class="destination-card" @click="region=d.place;query='';searchDone=true;go('search')"><image v-if="d.cover" :src="d.cover" mode="aspectFill"/><view><text>{{ d.place }}</text><text>{{ d.origin }} · {{ d.count }} 条 · 不可导航</text></view></button></scroll-view>
-  <scroll-view v-if="page==='photos'" scroll-y class="page-scroll"><view class="photo-grid"><button v-for="(p,i) in photos" :key="p" @click="previewPhoto(i)"><image :src="p" mode="widthFix"/><text>{{photoPlaces[i]}}</text></button></view><view class="list-end">{{research?'原版公开页面的本地研究裁图 · 非实时照片流':'原创示例插画 · 不是真实照片或地点'}}</view></scroll-view>
+  <scroll-view v-if="page==='photos'" scroll-y class="page-scroll"><template v-if="research"><view class="photo-grid"><button v-for="(p,i) in photos" :key="p" @click="previewPhoto(i)"><image :src="p" mode="widthFix"/><text>{{photoPlaces[i]}}</text></button></view><view class="list-end">原版公开页面的本地研究裁图 · 非实时照片流</view></template><view v-else class="empty"><Icon name="photo" :size="54" color="#ccc"/><text>还没有照片</text><text class="muted">公开版没有照片：不内置示例插画或占位图，也不抓取他人照片。照片只能来自你自己的记录或导入。</text><button class="primary" @click="go('record')">开始记录</button></view></scroll-view>
   <scroll-view v-if="page==='circles'" scroll-y class="page-scroll"><view class="tabs"><button class="active">我的</button><button @click="unavailable('全部圈子','没有官方社交接口，不能查询或加入原版圈子。')">全部</button></view><view class="info-strip">仅本机保存的研究用圈子，无在线成员或消息同步</view><view class="group-form"><input v-model="groupName" placeholder="圈子名称（本地）" maxlength="30"/><button class="primary" @click="createGroup">创建圈子</button></view><view v-for="g in groups" :key="g" class="cell"><Icon name="group"/><text>{{g}}</text><button @click="removeGroup(g)">删除</button></view></scroll-view>
   <scroll-view v-if="page==='data'" scroll-y class="page-scroll"><view class="field-label">公开版内置数据</view><view class="source-card"><text>{{ catalogFull?'北京 OSM 提取快照':'仓库内的示例子集' }} · {{ officialOsmRoutes.length }} 条 OpenStreetMap 路线（其中 {{ wayCount }} 条为命名路径片段）+ {{ demoRoutes.length }} 条数学合成示例</text><text>来源：{{ catalogSource || 'OpenStreetMap' }}</text><text v-if="catalogNotice">{{ catalogNotice }}</text><text>署名：© OpenStreetMap 贡献者 · 许可 ODbL 1.0（可再分发，但必须保留署名与许可）</text><text>{{ catalogElevationSource || '本目录不含海拔数据' }}</text><text>共 {{ shardCount() }} 个几何分片，打开某条路线时才下载它所在的分片。</text><text>注意：命名路径片段是 OpenStreetMap 中带名字的道路/步道几何，不等于一条完整徒步行程，也没有起点终点语义；全部轨迹未经实走验证，不可用于户外导航。</text><text>合成示例由程序按数学函数生成，不代表任何真实地点，同样不可导航。</text></view><view class="field-label">再分发与复现</view><view class="source-card"><text>路线目录与几何分片是普通公开文件（index.json 与 routes/shard-NNN.json）。任何人可以直接下载并依 ODbL 1.0 再分发，但必须保留署名与许可，也不得暗示官方认可。</text><text>本应用不包含六只脚的路线、图片或设备信息。</text></view><button class="cell" @click="openDoc(licenseUrl)"><text>ODbL 1.0 许可证全文</text><text class="muted">opendatacommons.org ›</text></button><button class="cell" @click="openDoc('https://www.openstreetmap.org/copyright')"><text>OpenStreetMap 版权与署名</text><text class="muted">openstreetmap.org ›</text></button><button class="cell" @click="copyText(indexUrl())"><text>复制目录地址（机器可读）</text><text class="muted">{{ indexUrl() }}</text></button><button class="cell" @click="copyText(manifestUrl())"><text>复制数据清单地址</text><text class="muted">{{ manifestUrl() }}</text></button><view class="source-card"><text>复现：下载 Geofabrik 的北京 OSM 抽取（ODbL 许可），运行 scripts/build-osm-catalog.mjs --all --elevation 生成目录，再用 scripts/prepare-catalog.mjs --full 安装进应用；scripts/verify-catalog.mjs 会逐条校验索引与分片是否一致。</text><text>海拔缓存与地形图块仅用于本机重建，不随应用发布；本页不是六只脚官方客户端。</text></view></scroll-view>
 
@@ -112,6 +121,7 @@
 import {ref,computed,watch,onMounted,onBeforeUnmount,type Ref} from 'vue';
 import TrackMap from '../../components/TrackMap.vue';import Icon from '../../components/Icon.vue';
 import rawRoutes from 'virtual:vias-catalog';
+import classicList from '../../core/classic-routes.json';
 const research=__VIAS_RESEARCH__;
 const prefix=import.meta.env.BASE_URL || '/';
 const asset=(name:string)=>prefix+(research?`static/research/${name}.jpg`:`static/demo/${name}.png`);
@@ -123,6 +133,8 @@ type Page='home'|'routes'|'search'|'detail'|'record'|'plan'|'profile'|'library'|
 // and the 精选 tab render from the committed preview plus the local demo routes immediately.
 const demoRoutes=(rawRoutes as Route[]).filter(r=>!r.id.startsWith('osm-')).map(r=>({...r,cover:r.cover&&/^\/?static\//.test(r.cover)?prefix+r.cover.replace(/^\//,''):r.cover}));
 const officialOsmRoutes:Ref<Route[]>=research?ref<Route[]>([]):osmCatalogRoutes;
+// 首屏「经典线路」：4 条知名北京路线。它们拿的是同一批首屏预览对象，所以元数据与缩略图随首屏立即渲染，点击进入详情时才下载几何分片。
+const classicRoutes=computed<Route[]>(()=>(classicList as {ids:string[]}).ids.map(id=>officialOsmRoutes.value.find(r=>r.id===id)).filter((r):r is Route=>!!r));
 const officialRoutes=computed<Route[]>(()=>[...officialOsmRoutes.value,...demoRoutes]);
 function readStore<T>(key:string,fallback:T):T{try{const value=uni.getStorageSync('vias:'+key);return value?JSON.parse(value):fallback;}catch{return fallback;}}
 function saveStore(key:string,value:unknown){try{uni.setStorageSync('vias:'+key,JSON.stringify(value));return true;}catch{toast('保存失败：本地存储空间不足，请先导出备份');return false;}}
@@ -133,8 +145,10 @@ const PAGE=40;
 // (distance, climb, start point, point count) is available.
 type Geometry='ready'|'loading'|'error';
 const routes=computed(()=>[...officialRoutes.value,...localRoutes.value]);const page=ref<Page>('home');const stack:Page[]=[];const visible=ref(PAGE);const wayCount=computed(()=>officialOsmRoutes.value.filter(r=>r.id.startsWith('osm-w')).length);const current=ref<Route>(officialRoutes.value[0]);const sheet=ref('');const routeTab=ref('featured');const libraryTab=ref('local');const tiles=ref(readStore('tiles',true));const query=ref('');const searchDone=ref(false);const region=ref('不限');const activityFilter=ref('不限');const distanceFilter=ref('不限');const onlyFavorites=ref(false);const noteDraft=ref('');const groupName=ref('');const position=ref<Point|null>(null);const locationError=ref('');const following=ref(false);const activity=ref('徒步');const planPoints=ref<Point[]>([]);const planTitle=ref('我的规划线路');const recordMap=ref<InstanceType<typeof TrackMap>>();
-const entries:{name:string;asset:string;page:Page}[]=[{name:'线路',asset:'route',page:'routes'},{name:'目的地',asset:'destination',page:'destinations'},{name:'照片墙',asset:'photo',page:'photos'},{name:'圈子',asset:'circle',page:'circles'}];
-const photos=['footprint-1','footprint-2','photo-1','photo-2','photo-3','photo-4'].map(asset);const photoPlaces=research?['繁峙县','易县','临安市','安福县','安福县','永嘉县']:['示例插画 A','示例插画 B','示例插画 C','示例插画 D','示例插画 E','示例插画 F'];const destinations=computed(()=>{const groups=new Map<string,{place:string;cover:string;origin:string;count:number}>();for(const r of officialRoutes.value){const hit=groups.get(r.place);if(hit)hit.count+=1;else groups.set(r.place,{place:r.place,cover:r.cover||'',origin:routeOrigin(r),count:1});}return [...groups.values()].sort((a,b)=>b.count-a.count);});
+const entries:{name:string;asset:string;icon:string;page:Page}[]=[{name:'线路',asset:'route',icon:'route',page:'routes'},{name:'目的地',asset:'destination',icon:'pin',page:'destinations'},{name:'照片墙',asset:'photo',icon:'photo',page:'photos'},{name:'圈子',asset:'circle',icon:'group',page:'circles'}];
+// 公开版没有照片：不内置示例插画或占位图，只有研究模式才引用原版截图的本地裁图。
+const photos=research?['footprint-1','footprint-2','photo-1','photo-2','photo-3','photo-4'].map(asset):[];
+const photoPlaces=['繁峙县','易县','临安市','安福县','安福县','永嘉县'];const destinations=computed(()=>{const groups=new Map<string,{place:string;cover:string;origin:string;count:number}>();for(const r of officialRoutes.value){const hit=groups.get(r.place);if(hit)hit.count+=1;else groups.set(r.place,{place:r.place,cover:r.cover||'',origin:routeOrigin(r),count:1});}return [...groups.values()].sort((a,b)=>b.count-a.count);});
 const titles:Partial<Record<Page,string>>={routes:'线路游记',search:'搜索线路',library:'我的轨迹',favorites:'我的收藏',history:'最近浏览',destinations:'目的地',photos:'照片墙',circles:'圈子',settings:'设置',data:'数据说明与许可'};
 const pageTitle=computed(()=>titles[page.value]||'景行');
 const profileItems=[{label:'轨迹库',icon:'folder',page:'library'},{label:'探索足迹',icon:'pin',page:'photos'},{label:'离线资源',icon:'download',page:'offline'},{label:'自定义图层管理',icon:'layers',page:'layers'},{label:'运动数据',icon:'chart',page:'stats'},{label:'我的循迹',icon:'route',page:'following'},{label:'我的收藏',icon:'star',page:'favorites'},{label:'最近浏览',icon:'clock',page:'history'}];

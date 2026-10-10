@@ -56,6 +56,7 @@ npm run test:browser
 
 已实现：
 - 首页、路线列表、基于本地数据的搜索筛选、详情、矢量地图及海拔图。
+- 首页「经典线路」是 4 条真实知名北京路线（箭扣西段长城、下马威·东灵山小道、妙峰古道中道、京西古道·门潭段），缩略图按真实 OpenStreetMap 几何绘制；**公开版不内置任何占位插画或示例照片**——没有真实照片时照片墙就是空状态。
 - 本地收藏、浏览历史、备注、轨迹库和圈子名称管理。
 - GPX 导入、GPX / KML 路径导出；拒绝外部 XML 实体、异常坐标和超限文件，保留轨迹分段。
 - 点选地图的直线规划、撤销及保存（**不是道路寻路**）。
@@ -69,13 +70,13 @@ npm run test:browser
 
 **仓库里只有示例子集，完整快照在服务器上。** 数据集分成三层：
 
-1. **仓库提交的示例子集** `client/catalog-sample/`（约 300 KB）：10 条精选线路的索引、缩略图与一个几何分片，克隆后无需任何私有数据即可构建、运行并跑通全部测试。
+1. **仓库提交的示例子集** `client/catalog-sample/`（16 个文件 / 353,726 B）：14 条精选线路（10 条关系 + 4 条经典命名路径）的索引、缩略图与一个几何分片，克隆后无需任何私有数据即可构建、运行并跑通全部测试。
 2. **首屏预览** `client/src/core/featured-routes.json`：构建产物，由 `scripts/prepare-catalog.mjs` 从目录索引生成，让“精选”tab 在第一帧就有内容（不含坐标）。
 3. **本地完整快照**（Git 忽略）：`data/catalog/{osm-index.json,thumbs/,shards/}`。由 `scripts/build-osm-catalog.mjs --all --elevation` 从本地（Git 忽略）的 OSM 北京抽取生成，再用 `scripts/prepare-catalog.mjs --full` 安装到 `client/src/static/osm/`（构建产物，同样忽略）。**不会随 Git 发布**；只有部署到自己的服务器时才会公开。
 
 公开客户端按需加载：
 
-- `client/src/static/osm/index.json`：目录索引（14,430 条，466 KB gzip），只含标题、类型、里程、起点、点数与精选标记，**不含坐标**。首屏不等待它：首页先渲染预览与合成示例，索引在首帧之后（`requestIdleCallback`）才请求；进入“全部”或搜索页会立即触发。
+- `client/src/static/osm/index.json`：目录索引（14,430 条，2.25 MB；gzip 后约 426 KB），只含标题、类型、里程、起点、点数与精选标记，**不含坐标**。首屏不等待它：首页先渲染预览与合成示例，索引在首帧之后（`requestIdleCallback`）才请求；进入“全部”或搜索页会立即触发。
 - `client/src/static/osm/routes/shard-NNN.json`：坐标按约 5,000 点/片切成 94 个分片，**打开哪条线路才下载哪个分片**（单条约 40 KB gzip；同一分片只下载一次，失败即缓存清除以便重试）。索引与分片在运行时都会做结构校验：重复 ID、分片键与目录不符、越界坐标、非数字坐标一律拒绝渲染。
 - `client/src/static/osm/manifest.json`：机器可读的数据清单（来源、提取日期、许可、海拔来源、计数、索引与每个分片/缩略图的 SHA-256、复现步骤），由 `scripts/prepare-catalog.mjs` 与数据一起写盘。它是发布快照的**唯一声明**：目录数据无法用人工白名单列出（14,430 张缩略图不具可审阅性），所以 `scripts/release.py` 改为读回这份清单，未经声明或哈希不符的 `static/osm/*` 一律拒绝打包。
 - **回归闸门**：`scripts/check-public-build.mjs` 会拒绝超过 6 MB 的 JS 分块、H5 全部 JS 超过 2 MB、任何未在索引里出现的 `static/osm/*` 文件与哈希不符的缩略图/分片，并证明索引没有被内联进 bundle（比对索引尾部与抽样标题）。

@@ -65,6 +65,16 @@ const SELECTION = [
   {id: 14107691, activity: '骑行', place: '北京市 · 昌平42km'},
   {id: 12098807, activity: '骑行', place: '北京市 · 海淀三山五园'},
 ];
+// Four well-known Beijing outings, flagged as featured so the home screen can show real
+// routes (with thumbnails drawn from their real geometry) instead of stand-in artwork.
+// This is a pure overlay on the length-ordered way list: the 14,430 entries keep their exact
+// positions and bytes, so pinning a route can never reshuffle the published shards.
+const FEATURED_WAYS = [
+  {id: 92160463, activity: '登山', place: '北京市 · 怀柔 · 箭扣长城'},
+  {id: 659656629, activity: '登山', place: '北京市 · 门头沟 · 东灵山'},
+  {id: 162162027, activity: '登山', place: '北京市 · 门头沟 · 妙峰山'},
+  {id: 55280954, activity: '徒步', place: '北京市 · 门头沟 · 京西古道'},
+];
 
 const R = 6371008.8;
 const rad = Math.PI / 180;
@@ -327,7 +337,12 @@ function drawRoute(segments) {
 /* ---------- build ---------- */
 const index = JSON.parse(fs.readFileSync(path.join(osmDir, 'index.json'), 'utf8'));
 const relationById = new Map(index.filter(e => e.type === 'relation').map(e => [e.id, e]));
-const featuredInfo = new Map(SELECTION.map(e => [e.id, e]));
+const wayById = new Map(index.filter(e => e.type === 'way').map(e => [e.id, e]));
+const featuredInfo = new Map([...SELECTION, ...FEATURED_WAYS].map(e => [e.id, e]));
+// Fail loudly instead of publishing a catalogue whose home screen lost a pinned route: an id
+// that is not in the extract would otherwise be marked featured and then silently missing.
+const unfeatured = [...featuredInfo.keys()].filter(id => !relationById.has(id) && !wayById.has(id));
+if (unfeatured.length) throw new Error(`featured entries missing from the extract: ${unfeatured.join(', ')}`);
 const wayActivity = () => '徒步';
 const activityFor = route => route === 'bicycle' ? '骑行' : route === 'hiking' ? '登山' : '徒步';
 // Chinese mappers in this extract store annotations such as «（非成熟路线）» straight in the
@@ -342,7 +357,7 @@ const ordered = (wantAll ? [
   ...relations.filter(e => !featuredInfo.has(e.id)).sort(byLength),
   ...ways.filter(e => !annotated(e.tags.name)).sort(byLength),
   ...ways.filter(e => annotated(e.tags.name)).sort(byLength),
-] : SELECTION.map(e => relationById.get(e.id))).slice(0, limit || undefined);
+] : [...SELECTION.map(e => relationById.get(e.id)), ...FEATURED_WAYS.map(e => wayById.get(e.id))]).slice(0, limit || undefined);
 const cache = fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : {};
 const routes = [];
 let sampled = 0;
@@ -356,7 +371,7 @@ fs.mkdirSync(thumbDir, {recursive: true});
 fs.rmSync(shardDir, {recursive: true, force: true});
 fs.mkdirSync(shardDir, {recursive: true});
 let done = 0;
-// The subset that is committed to git (10 featured relations): kept aside while the full
+// The subset that is committed to git (14 featured routes): kept aside while the full
 // catalogue streams to disk.
 const sampleKeys = [];
 const sampleShard = {};
