@@ -98,7 +98,7 @@ python3 deploy-site.py 20261010T005058Z manifest.json release.py - \
 - 全新 Chrome context 验证首页→线路→详情、示例标识、收藏、自造 GPX 导入导出及持久化、字体图片、无越界同源请求或运行时异常。强制 OSM 503 时保留轨迹与失败提示；另一次无拦截观测 6 张 OSM 瓦片 200，不承诺外部网络持续可用。
 - 主站、private、Fleeting、HairPlay 共 12 项 HTTP/稳定资源基线完全一致；另行 Chrome 检查四个入口 200、无运行时异常。没有重启应用或操作手机。
 
-服务器保留受限目录 `/srv/sites/liangz77.cn/vias/.deploy-20261009T051547Z`（700），内含本次核对过的工具、包和 manifest，不在 file_server 根内。后续复核可在该目录运行 `python3 release.py verify-http https://liangz77.cn/vias/ manifest.json`。
+服务器保留受限目录 `/srv/sites/liangz77.cn/vias/.deploy-20261009T051547Z`（700），内含本次核对过的工具、包和 manifest，不在 file_server 根内（**补注 2026-10-10**：这个最早期的暂存目录与对应的 release 目录后来已被清理，见文末「服务器上还留着什么」）。后续复核可在该目录运行 `python3 release.py verify-http https://liangz77.cn/vias/ manifest.json`。
 
 勘误：`verify-tree` **拒绝把软链当作根**，所以不要对 `../current` 调用它；先 `readlink ../current` 确认指向，再把**真实发布目录**（本次为 `../releases/20261009T051547Z`）传给 `verify-tree`：
 
@@ -166,3 +166,5 @@ python3 config-transaction.py \
 - **远端发布**：发布工具三件套 SHA-256 与上轮核对值一致（`aa4221f3…`/`0ba65872…`/`d0233c29…`），**未修改**；上传的 5 个文件远端哈希与本地一致。detached `setsid nohup deploy-site.py … --mode deploy`；`deploy.log`：`VERIFY_ARCHIVE_OK files=14542`、`VERIFY_TREE_OK files=14542`（两次）、`HTTP_OK files=14542 SHA-256 matches; metadata_404=14550`、`PUBLISH_OK current=releases/20261010T103442Z previous=releases/20261010T092030Z (atomic mv -T)`、`DEPLOY_SITE_OK`（末行 18:56:01 +0800，即切换后的全量 HTTP 校验约 1,240 s）。
 - **切换后复核**：线上 `static/osm/index.json` / `manifest.json` 哈希与本地一致；`static/demo/{banner,entry-route,photo-1,footprint-1}.png` 仍 404；四张 way 缩略图 200；Caddy 站点片段 `e8300438…`、主 `Caddyfile` `d31cec45…`、`MainPID=7884`、`ActiveEnterTimestamp` 与切换前相同（未改配置、未 reload）。
 - **线上竞态回归**：`race-check.mjs` 对**新上线版本**跑 → `VERDICT: PASS`（挂起索引期间不请求任何分片、只显示「轨迹数据按需加载中…」，放行后请求 `shard-018.json`、地图渲染、0 错误）；同一个脚本对上一版线上跑是 `VERDICT: FAIL`。证据 `artifacts/classics/race-live-after.out`、`race-live-after-{hold,released}.png`。
+
+- **服务器上还留着什么（2026-10-10 10:35 UTC 实测）**：`releases/` 与 `.deploy-*` 各保留 5 个——`20261010T005058Z`、`20261010T044533Z`、`20261010T061904Z`、`20261010T092030Z`、`20261010T103442Z`；最早那轮的 `releases/20261009T051547Z` 与 `.deploy-20261009T051547Z` **已经不存在**（第 101、106–108、116 行是当时的历史记录，不要再照着路径去跑）。发布包清单只存在于暂存目录（`.deploy-<ID>/manifest.json`），`releases/<ID>/` 里只有发布树。
