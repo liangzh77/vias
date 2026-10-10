@@ -1,6 +1,6 @@
 # Vias 公开静态部署
 
-公开版仅包含数学合成轨迹、原创插画和开源字体。示例不是官方线路、不是实际道路，**不可用于导航**。账户、支付、组队与离线地图等未接入服务。收藏、备注和 GPX 导入保存在浏览器；导出在本机生成。GPS 需要 HTTPS 和主动授权，不应向站点上传私人轨迹。
+当前公开版包含北京 OpenStreetMap 提取快照（14,430 条路线/命名路径片段）、数学合成轨迹、程序绘制的缩略图、原创插画和开源字体。**公网部署即公开完整数据集**，再分发必须遵守 ODbL 署名与许可。命名路径片段不是完整行程；海拔来自地形插值、非实测，轨迹未经实走验证，**不可用于导航**。账户、支付、组队与离线地图等未接入服务。收藏、备注和 GPX 导入保存在浏览器；导出在本机生成。GPS 需要 HTTPS 和主动授权，不应向站点上传私人轨迹。
 
 ## 本地准备
 
@@ -52,6 +52,36 @@ PREVIEW_URL=http://127.0.0.1:8787/vias/ node scripts/deploy-browser-test.mjs
 上线后必须逐文件 HTTP 200 + SHA-256，确认 `/vias` 301、未知与研究/元数据路径 404，以及实际树无额外文件；全新 Chrome context 验证首页→线路→详情、收藏、GPX、字体/图片、无同源跨前缀请求和运行时错误。比较主站、private、Fleeting、HairPlay 原基线。仅 HTTP 200 不构成浏览器验收。独立 check-run approve 前不宣称通过部署验收。
 
 ## 实际发布记录
+
+### 2026-10-10：完整目录异步加载/按需分片（验收阻断，待独立复核）
+
+用户授权后，从干净提交 `f1cc6b18ccc2ed8d3da6a3741061536843963161` 重新构建，公开检查、打包及本机浏览器命令成功；未改应用功能。公开 URL：**https://liangz77.cn/vias/**。
+
+- 实际 `current`：`releases/20261010T044533Z`；旧 `releases/20261010T005058Z` 保留。仅一次原子切换，没有再次部署或手动回退。
+- 包 SHA-256：`89763a0fc68d7462952e3522f35cae71e0fe63820411bce7443fbd7fd5cb06e1`。
+- 发布 manifest SHA-256：`790502abf41a52b0c5c28e130dd2d1dad7836712b6f4d488ef48d3f6568344cb`；14,553 个公开文件，14,430 条 OSM 路线、94 分片。
+- 索引 SHA-256：`5b9d0b38487961555cc8b4083297d9b2848f9161603a9bbd321e6a0c37f07c2e`。H5 JS 490,633 字节。
+- 站点片段 SHA-256 前后均为 `e8300438db4e7f303ce60a45b48d7496de346bcb59c1b7a85138d943adb63aea`；主 Caddyfile 前后均为 `d31cec4506c8de7fe088a7119132964d7b56c087c0c590a4ffba18f6079f3739`。无配置修改、reload、服务重启或其他应用操作。
+- 全量实际发布树 `verify-tree` 成功：14,553 文件逐文件 SHA-256、无多余文件/目录/软链，目录 755/文件 644。
+- 本机直连公网 HTTP：全部 123 个非 OSM 缩略图文件（含 HTML/JS/CSS/字体/索引/清单/全部 94 分片）200/hash 一致；14,430 张 OSM 缩略图抽取 500 张随机内部文件 + 字典序首末各 1 张，502 张（3.48%）均 200/hash 一致。随机种子及逐文件结果保留在执行证据。
+- 索引与 shard-000 实际 `Content-Encoding: gzip`，压缩体分别 431,282 / 42,506 字节，解压 hash 匹配。`/vias` 301 至 `/vias/`；源码、research、`.git`、版本目录 manifest、`__MACOSX`、不存在的 shard-999 均 404。
+- 主站/private/Fleeting/HairPlay：原记录的 12 项 + HairPlay 当前 3 项资源，共 15 项前后状态/URL/hash/字节完全一致；原 HairPlay 3 个旧资源在 before 已 404，未把历史值当本轮基线。
+- **发布完成信号缺失**：已核对的 `deploy-site.py`（不传配置参数）调用 `release-remote.sh`，输出全量归档/磁盘校验成功并已切换；随后串行 `verify-http` 超过 1,800 秒，SSH 工具超时，未获得远端退出码或 `PUBLISH_OK`/`DEPLOY_SITE_OK`。随后只读观察无残留发布进程、current 仍为新版本，未观察到自动回退；不据此声称自动发布流程完整成功。
+- **公网浏览器阻断**：全新 Chrome context 的同一 `performance` 时钟显示 index 请求起点 154.8 ms，FCP 160 ms（早约 5.2 ms），首帧后加载断言失败、退出 1。立即停止，不修改应用或重新部署。公网数据说明/剪贴板、打开路线单分片、导出、503 降级及恢复的后续流程未执行，不以本机证据替代。
+- 微信产物仅编译检查，完整主包超 2 MB，仍需分包及 HTTPS 白名单；无手机、账户、真实 GPS 操作。公网部署即公开完整数据集。**尚未通过独立 check-run；等待 Astra high 复核及处置决定。**
+
+服务器受限目录 `/srv/sites/liangz77.cn/vias/.deploy-20261010T044533Z`（700）仅上传包、manifest、核对过的 `release.py`；复用旧目录中 hash 已核对的协调器与 shell 工具。若后续获准回退，先确认 current 仍为本版本，再用旧版本自己的 manifest 和协调锁执行（本轮未执行）：
+
+```sh
+cd /srv/sites/liangz77.cn/vias/.deploy-20261010T005058Z
+readlink ../current  # 必须仍为 releases/20261010T044533Z
+python3 deploy-site.py 20261010T005058Z manifest.json release.py - \
+  /srv/sites/liangz77.cn/vias https://liangz77.cn/vias/ --mode switch
+```
+
+回退不传配置参数，不改/reload Caddy，不删除任何旧发布目录。执行证据留在 `artifacts/deploy-check-run2/`，不提交仓库。
+
+### 历史记录：2026-10-09 合成演示
 
 2026-10-09 发布至 **https://liangz77.cn/vias/**，版本 `20261009T051547Z`；Phase A 独立 Gate 已批准，Phase B 已获协调者授权。应用包未改变；最终线上独立复核已由独立模型（Astra high）通过，**仅覆盖本次公开合成演示部署所验证的范围**，不代表完整应用或全功能验收。
 
