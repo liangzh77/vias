@@ -18,6 +18,17 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+# The OSM catalogue is derived data: it cannot be listed by hand in public-assets.json, and a
+# hash list of 14,000 thumbnails is not reviewable. The manifest that ships next to the data is
+# therefore the single declaration of what a catalogue deployment publishes, and pack() reads it
+# back so an undeclared or altered catalogue file can never leave the machine.
+DERIVED_PREFIX = 'static/osm/'
+DERIVED_MANIFEST = DERIVED_PREFIX + 'manifest.json'
+SHA256 = re.compile(r'[0-9a-f]{64}')
+SHARD_NAME = re.compile(re.escape(DERIVED_PREFIX) + r'routes/shard-\d{3}\.json')
+THUMB_NAME = re.compile(re.escape(DERIVED_PREFIX) + r'w?\d+\.png')
+
+
 def safe_name(name):
     parts = PurePosixPath(name).parts
     if (not parts or name != '/'.join(parts) or name.startswith('/') or
@@ -90,6 +101,52 @@ def verify_archive(path, expected):
         raise ValueError('Archive file set/hashes differ from manifest')
 
 
+def catalogue_declaration(build):
+    """Hash-pinned inventory of the published catalogue, read from its shipped manifest."""
+    path = Path(build) / DERIVED_MANIFEST
+    if not path.is_file():
+        raise ValueError('Catalogue files without ' + DERIVED_MANIFEST)
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError('Unreadable catalogue manifest') from exc
+    licence = data.get('license') or {}
+    if (licence.get('name') != 'ODbL 1.0'
+            or licence.get('url') != 'https://opendatacommons.org/licenses/odbl/1-0/'
+            or licence.get('attributionZh') != '© OpenStreetMap 贡献者'):
+        raise ValueError('Catalogue manifest is missing its licence terms or attribution')
+    index = data.get('index') or {}
+    if (index.get('path') != DERIVED_PREFIX + 'index.json'
+            or not SHA256.fullmatch(str(index.get('sha256', '')))):
+        raise ValueError('Catalogue manifest does not pin the catalogue index hash')
+    declared = {DERIVED_MANIFEST: None, index['path']: index['sha256']}
+    shards, thumbs = data.get('shards') or [], data.get('thumbnails') or []
+    for entries, pattern in ((shards, SHARD_NAME), (thumbs, THUMB_NAME)):
+        for item in entries:
+            name, sha = str(item.get('path', '')), str(item.get('sha256', ''))
+            if not pattern.fullmatch(name) or not SHA256.fullmatch(sha):
+                raise ValueError('Catalogue manifest has a malformed entry: ' + name)
+            if name in declared:
+                raise ValueError('Catalogue manifest repeats ' + name)
+            declared[name] = sha
+    counts = data.get('counts') or {}
+    if len(shards) != counts.get('shards') or len(thumbs) != counts.get('thumbnails'):
+        raise ValueError('Catalogue manifest file counts disagree with its own list')
+    if sum(int(item.get('routes', 0)) for item in shards) != counts.get('routes'):
+        raise ValueError('Catalogue manifest shard route counts do not add up')
+    if int(counts.get('relations', -1)) + int(counts.get('namedPaths', -1)) != counts.get('routes'):
+        raise ValueError('Catalogue manifest route split does not add up')
+    return declared
+
+
+def check_catalogue_file(name, sha, declaration):
+    """Only files the shipped manifest declares, with the hash it declares, may be packed."""
+    if declaration is None:
+        raise ValueError('Catalogue files without ' + DERIVED_MANIFEST + ': ' + name)
+    if name != DERIVED_MANIFEST and declaration.get(name) != sha:
+        raise ValueError('Undeclared catalogue asset: ' + name)
+
+
 def pack(root, archive, output_manifest):
     # Independent strict file whitelist, in addition to the build checker.
     approved = json.loads((Path(__file__).resolve().parents[1] /
@@ -102,12 +159,22 @@ def pack(root, archive, output_manifest):
     if result.returncode:
         raise ValueError('Public build checker refused package')
     files, dirs = tree(root)
+    declaration = catalogue_declaration(root) if any(
+        name.startswith(DERIVED_PREFIX) for name in files) else None
     for name, sha in files.items():
+        if name.startswith(DERIVED_PREFIX):
+            check_catalogue_file(name, sha, declaration)
+            continue
         if name.startswith('static/'):
             if approved.get(name) != sha:
                 raise ValueError(f'Unapproved static asset: {name}')
         elif name != 'index.html' and not re.fullmatch(r'assets/[A-Za-z0-9_.-]+\.(js|css|svg|png|woff2)', name):
             raise ValueError(f'Unapproved build file: {name}')
+    if declaration is not None:
+        absent = sorted(name for name in declaration if name not in files)
+        if absent:
+            raise ValueError('Catalogue manifest declares files that were not built: '
+                             + ', '.join(absent[:3]))
     if not approved.keys() <= files.keys() or 'index.html' not in files or dirs != directories(files):
         raise ValueError('Incomplete build or unexpected directory')
     # Exclusive creation: never overwrite a previous package or manifest.

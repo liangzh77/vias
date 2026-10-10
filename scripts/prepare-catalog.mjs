@@ -47,15 +47,15 @@ if (!fs.existsSync(indexPath)) {
 }
 const catalog = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
 const label = path.relative(root, source);
-
 /* ---------- machine-readable manifest for the published dataset ---------- */
 // The catalogue is a redistributable ODbL extract, so any deployment must ship the terms,
 // the origin and the caveats next to the data itself.
 const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-function buildManifest(index, indexFile, shardDir, coverCount) {
+function buildManifest(index, indexFile, shardDir, coverFiles) {
   const relations = index.routes.filter(entry => !entry.id.startsWith('osm-w')).length;
   const shardFiles = fs.readdirSync(shardDir).sort();
   if (shardFiles.length !== index.shards.length) throw new Error(`shard count mismatch: ${shardFiles.length} files vs ${index.shards.length} entries`);
+  if (coverFiles.length !== index.routes.length) throw new Error(`thumbnail count mismatch: ${coverFiles.length} files vs ${index.routes.length} entries`);
   // The shard files are numbered in catalogue order, so file i carries shards[i] routes.
   const shards = shardFiles.map((file, i) => ({
     path: `static/osm/routes/${file}`, routes: index.shards[i], sha256: sha256(path.join(shardDir, file)),
@@ -86,10 +86,15 @@ function buildManifest(index, indexFile, shardDir, coverCount) {
       namedPaths: index.routes.length - relations,
       points: index.routes.reduce((n, entry) => n + (entry.points || 0), 0),
       shards: index.shards.length,
-      thumbnails: coverCount,
+      thumbnails: coverFiles.length,
     },
     index: {path: 'static/osm/index.json', sha256: sha256(indexFile)},
     shards,
+    // Derived data cannot be listed by hand in scripts/public-assets.json: the manifest is the
+    // single statement of what is published, so every thumbnail is pinned here too.
+    thumbnails: coverFiles.map(file => ({
+      path: `static/osm/${path.basename(file)}`, sha256: sha256(file),
+    })),
     caveats: [
       '命名路径片段是 OpenStreetMap 中带名字的道路/步道几何，不是完整行程，也没有起点终点语义。',
       '全部轨迹未经实走验证，不可用于户外导航。',
@@ -118,7 +123,7 @@ if (exportSample) {
   }
   fs.rmSync(sampleDir, {recursive: true, force: true});
   fs.cpSync(sampleSource, sampleDir, {recursive: true});
-  fs.writeFileSync(path.join(sampleDir, 'manifest.json'), JSON.stringify(buildManifest(subset, path.join(sampleDir, 'osm-index.json'), path.join(sampleDir, 'shards'), fs.readdirSync(path.join(sampleDir, 'thumbs')).length), null, 2) + '\n', 'utf8');
+  fs.writeFileSync(path.join(sampleDir, 'manifest.json'), JSON.stringify(buildManifest(subset, path.join(sampleDir, 'osm-index.json'), path.join(sampleDir, 'shards'), fs.readdirSync(path.join(sampleDir, 'thumbs')).sort().map(file => path.join(sampleDir, 'thumbs', file))), null, 2) + '\n', 'utf8');
   console.log(`EXPORTED_SAMPLE ${path.relative(root, sampleSource)} -> ${path.relative(root, sampleDir)} routes=${subset.routes.length}`);
   process.exit(0);
 }
@@ -128,11 +133,13 @@ if (fs.existsSync(staticDir)) fs.rmSync(staticDir, {recursive: true, force: true
 fs.mkdirSync(path.join(staticDir, 'routes'), {recursive: true});
 fs.copyFileSync(indexPath, path.join(staticDir, 'index.json'));
 let covers = 0;
+const coverFiles = [];
 for (const entry of catalog.routes) {
   const key = entry.id.slice('osm-'.length);
   const from = path.join(source, 'thumbs', `${key}.png`);
   if (!fs.existsSync(from)) throw new Error(`missing thumbnail for ${entry.id}: ${path.relative(root, from)}`);
   fs.copyFileSync(from, path.join(staticDir, `${key}.png`));
+  coverFiles.push(path.join(staticDir, `${key}.png`));
   covers += 1;
 }
 let shards = 0;
@@ -151,7 +158,7 @@ fs.writeFileSync(previewFile, JSON.stringify({
 }, null, 2) + '\n');
 
 /* ---------- machine-readable manifest ---------- */
-const manifest = buildManifest(catalog, path.join(staticDir, 'index.json'), path.join(staticDir, 'routes'), covers);
+const manifest = buildManifest(catalog, path.join(staticDir, 'index.json'), path.join(staticDir, 'routes'), coverFiles);
 fs.writeFileSync(path.join(staticDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
 const bytes = (dir) => {

@@ -58,6 +58,8 @@ index.shards.forEach((count,i)=>{const name='shard-'+String(i).padStart(3,'0')+'
  if(!entry||entry.routes!==count)throw Error('Catalogue manifest is missing shard counts for '+name);
  if(entry.sha256!==hash(fs.readFileSync(path.join(root,'client/src/static/osm/routes',name))))throw Error('Catalogue manifest hash disagrees for '+name);});
 if(manifestShards.size!==index.shards.length)throw Error('Catalogue manifest lists unknown geometry shards');
+const manifestThumbs=new Map((manifest.thumbnails||[]).map(t=>[t.path,t]));
+if(manifestThumbs.size!==manifest.counts.thumbnails)throw Error('Catalogue manifest thumbnail list disagrees with its count');
 const osmCovers=new Set();const osmShards=new Set();
 for(const route of index.routes){
  const key=String(route.id||'').replace(/^osm-/,'');
@@ -71,6 +73,13 @@ const shardStart=[];let shardTotal=0;
 for(const count of index.shards){if(!Number.isInteger(count)||count<=0)throw Error('Catalogue shard table has a bad count');shardStart.push(shardTotal);shardTotal+=count;}
 if(index.routes.length!==shardTotal)throw Error('Catalogue index and shard table disagree: '+index.routes.length+' vs '+shardTotal);
 index.shards.forEach((_,i)=>osmShards.add('static/osm/routes/shard-'+String(i).padStart(3,'0')+'.json'));
+// Every thumbnail is hash-pinned by the manifest, so the shipped covers stay the ones the
+// published terms and provenance describe.
+if(manifestThumbs.size!==osmCovers.size)throw Error('Catalogue manifest describes '+manifestThumbs.size+' thumbnails, the index needs '+osmCovers.size);
+for(const rel of osmCovers){const entry=manifestThumbs.get(rel);if(!entry)throw Error('Catalogue manifest is missing thumbnail '+rel);
+ const file=path.join(dir,rel),install=path.join(root,rel);
+ if(!fs.existsSync(file)&&!fs.existsSync(install))throw Error('Missing thumbnail file '+rel);
+ if(entry.sha256!==hash(fs.readFileSync(fs.existsSync(file)?file:install)))throw Error('Catalogue manifest hash disagrees for '+rel);}
 for(const rel of files){
  if(rel.startsWith('static/research/'))continue;
  const b=fs.readFileSync(path.join(dir,rel)),sha=hash(b);

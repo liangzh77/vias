@@ -22,6 +22,8 @@ python3 scripts/test_config_transaction.py
 
 `check-public-build.mjs` 校验 `scripts/public-assets.json` 的 SHA-256，动态编译文件必须与 Rollup 生成的独立 `.vias-h5-inventory.json` 文件集和哈希完全匹配，并只允许限定类型；该清单位于构建目录的父目录，不进入公开包。复制构建到其他路径打包时必须同步父目录清单，或用 `VIAS_BUILD_INVENTORY` 指定可信清单；字体即使在 `assets/` 也必须匹配批准字体哈希。未知文件、source map、元数据、软链接、私有标识或路径都会阻断打包。仅清理与已知本机研究源文件逐字节匹配的已知研究副本；未知研究文件也拒绝。失败产物保留用于调查，不能上传。
 
+目录数据（`static/osm/**`）不在 `public-assets.json` 里：14,430 张缩略图既无法人工审阅，也无法用小型白名单表达。它在两处被独立约束：`check-public-build.mjs` 从 **索引** 推导封面与分片集合、要求清单里的每个缩略图/分片哈希与磁盘一致、并校验清单与索引的来源/许可/计数互洽；`release.py pack` 则读回随数据一起发布的 `static/osm/manifest.json`，**只有清单声明且哈希相符的 `static/osm/*` 才能打包**，未声明、多余或清单里声明却未构建的文件都会失败。两份检查都不能用环境变量绕过；发布完整快照仍需要显式运行 `node scripts/prepare-catalog.mjs --full`。
+
 推荐 `python3 scripts/export-public.py <全新导出目录>`，只导出 Git 跟踪与非 ignored 新文件（未提交修改也会导出），复用本机依赖后在导出目录构建。不要把私有目录、仓库、依赖或源码上传。
 
 ```sh

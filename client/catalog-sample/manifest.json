@@ -1,6 +1,6 @@
 {
   "title": "景行（Vias）OpenStreetMap 北京路线快照",
-  "generated": "2026-10-10T04:18:01.598Z",
+  "generated": "2026-10-10T04:35:32.146Z",
   "full": false,
   "source": "OpenStreetMap 北京抽取（Geofabrik beijing-latest.osm.pbf，ODbL 1.0，© OpenStreetMap 贡献者） · 示例（已提交到仓库的子集）",
   "extracted": "2026-10-09",
@@ -34,6 +34,48 @@
       "path": "static/osm/routes/shard-000.json",
       "routes": 10,
       "sha256": "40f67bc205800e4022c7302a69af18d65ef1d29cb5530d69e7c9fc61084f0e19"
+    }
+  ],
+  "thumbnails": [
+    {
+      "path": "static/osm/12098807.png",
+      "sha256": "d9107656ec8e33d1c1260228337575d6b1b4221f08c3530ced3970853f0b9893"
+    },
+    {
+      "path": "static/osm/14107691.png",
+      "sha256": "ec7b8be0dbd3fcb9fbad6e8f1c53e1afaaa73e00aac2522a928dd9a58b7474f3"
+    },
+    {
+      "path": "static/osm/14127934.png",
+      "sha256": "fbd77f18c1f90c0d1ee4ae4871b2aa1cef4c49c077183c4ff1e530f6cc2b8476"
+    },
+    {
+      "path": "static/osm/16205150.png",
+      "sha256": "22a4e681d8fde97eacee2e8691cec7d48d866c41705ad78e57652f227fadaf09"
+    },
+    {
+      "path": "static/osm/17213433.png",
+      "sha256": "30f0e7322c44cf076221110f8707f03fa91f38a562cf3eabdbc6be40458219fb"
+    },
+    {
+      "path": "static/osm/17501897.png",
+      "sha256": "018a5304013576559a0901fb05f982b9116e1bb56f70d46ae233a75470c82044"
+    },
+    {
+      "path": "static/osm/17507479.png",
+      "sha256": "4f22a19dadfda802e157397fbc8d65d878c011279f3913c34604ef6f5f8db0ca"
+    },
+    {
+      "path": "static/osm/17507480.png",
+      "sha256": "00b3ac0d9194912cf7713bff7eca24d8eb5c5efe8f7557b10f929d6095d6881b"
+    },
+    {
+      "path": "static/osm/18359613.png",
+      "sha256": "df9893eeebc8f77b9911e694c58a0740e78d131c162abf1aead7a722b5829828"
+    },
+    {
+      "path": "static/osm/19799028.png",
+      "sha256": "8044013bdb26a223a3408b43d8c80eb2d8cdbbc4567210e8b5f11e172d438131"
     }
   ],
   "caveats": [
