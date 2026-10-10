@@ -2,9 +2,9 @@
 
 户外轨迹 H5 / 微信小程序研究项目，采用 **uni-app、Vue 3、TypeScript、Leaflet**。界面与交互研究参考六只脚，但不是其官方客户端，也未连接其账户、路线库或商业服务。
 
-> **公开版本只包含原创示例插画和两条数学合成轨迹。示例不是真实道路，不可用于户外导航。** 原版图片、真实导出路线、手机截图和设备调试信息不在本仓库。
+> **公开版本包含 10 条来自 OpenStreetMap 的北京线路（ODbL 1.0）和 2 条数学合成示例；插画与路线缩略图均由程序生成。所有轨迹未经实走验证，不可用于户外导航。** 六只脚原版图片、其账户导出的真实路线、手机截图和设备调试信息不在本仓库。
 
-在线演示（公开合成示例版，非完整应用）：<https://liangz77.cn/vias/>
+在线演示（公开版，非完整应用）：<https://liangz77.cn/vias/>
 
 ## 快速开始
 
@@ -66,11 +66,14 @@ npm run test:browser
 
 ## 数据与发布安全
 
-- `client/src/core/demo-routes.json`：程序生成的示例，不代表真实行走轨迹。
+- `client/src/core/public-routes.ts`：公开构建的目录入口，组合下面两组数据。
+- `client/src/core/osm-routes.json`：10 条北京线路，由 `scripts/build-osm-catalog.mjs` 从本地（Git 忽略）的 OSM 北京提取生成。线路数据 © OpenStreetMap 贡献者（ODbL 1.0），可按关系 ID 溯源；海拔取自 SRTM 90 m（NASA/USGS，公有领域），为采样插值而非实测。
+- `client/src/static/osm/`：程序按线路几何绘制的路线缩略图（无第三方底图）。
+- `client/src/core/demo-routes.json`：程序生成的数学合成示例，不代表真实行走轨迹。
 - `client/src/static/demo/`：原创程序绘制插画；可用 `scripts/generate-demo.py` 重建（需 Python + Pillow）。
 - 字体为更名后的 Noto Sans CJK / Roboto 子集，保留 OFL 授权与署名，见 `client/src/static/fonts/`。
 - `.gitignore` 排除手机截图、原始轨迹、调试工具、私有研究目录、日志和环境密钥。公开仓库不代表第三方素材获得再发布许可。
 - 可选的 `VIAS_RESEARCH=1` 仅供拥有本地研究数据的人切换目录；公开克隆不需要此开关。该模式的构建**不得直接对外发布**。
-- 公共构建默认使用示例，并通过 npm postbuild 钩子移除本地研究图片、检查真实目录标识符泄露。应使用 `npm run build:*`，不要绕过 postbuild。
+- 公共构建默认使用 `public-routes.ts`（OSM 线路 + 合成示例），并通过 npm postbuild 钩子移除本地研究图片、检查真实目录标识符泄露。应使用 `npm run build:*`，不要绕过 postbuild。H5 构建产物内置 OSM/ODbL 与 SRTM 署名。
 
 公开发布范围及验证记录见 [docs/PUBLICATION.md](docs/PUBLICATION.md)。本仓库未为项目自有代码另行选择开源许可证；公开可见不自动等于任意再授权。第三方字体及依赖按各自许可证使用。

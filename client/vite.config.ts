@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 const publicBuild = process.env.VIAS_PUBLIC === '1';
 if (publicBuild && process.env.VIAS_RESEARCH === '1') throw new Error('Public build cannot enable research');
 const research = process.env.VIAS_RESEARCH === '1';
-const catalog = fileURLToPath(new URL(research ? './src/core/routes.json' : './src/core/demo-routes.json', import.meta.url));
+const catalog = fileURLToPath(new URL(research ? './src/core/routes.json' : './src/core/public-routes.ts', import.meta.url));
 if (!existsSync(catalog)) throw new Error('Local research catalog missing; omit VIAS_RESEARCH to use public demo data.');
 export default defineConfig({
   base: publicBuild ? '/vias/' : '/',
