@@ -215,12 +215,19 @@ test('OSM exports keep author, source URL and ODbL licence after shard loading',
   assert.match(gpx,/<copyright author="OpenStreetMap 贡献者">/);
   assert.match(gpx,/<license>https:\/\/opendatacommons\.org\/licenses\/odbl\/1-0\/<\/license>/);
   assert.ok(gpx.includes(url));
+  // Machine-readable provenance must be a real attribute, not only prose in <desc>.
+  assert.ok(gpx.includes(`<link href="${url}"><text>${route.author}</text></link>`),'GPX metadata link href');
+  assert.ok(gpx.includes(`<src>${route.source}</src>`),'GPX trk src');
+  assert.equal((gpx.match(/<link href=/g)||[]).length,2,'metadata link + trk link');
   const kml=exportKml(route);
   assert.match(kml,/<atom:link rel="license" href="https:\/\/opendatacommons\.org\/licenses\/odbl\/1-0\/"\/>/);
+  assert.ok(kml.includes(`<atom:link rel="related" href="${url}"/>`),'KML related link');
   assert.ok(kml.includes('terrarium'));
   assert.ok(kml.includes('非实测'));
   assert.ok(kml.includes(url));
-  assert.equal(parseGpx(gpx).segments.flat().length,route.pointCount);
+  const back=parseGpx(gpx);
+  assert.equal(back.segments.flat().length,route.pointCount);
+  assert.equal(back.sourceUrl,url,'source link survives a GPX round trip');
  }
 });
 

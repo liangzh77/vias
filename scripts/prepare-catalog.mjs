@@ -51,8 +51,7 @@ const label = path.relative(root, source);
 // The catalogue is a redistributable ODbL extract, so any deployment must ship the terms,
 // the origin and the caveats next to the data itself.
 const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-function buildManifest(index, indexFile, shardDir, coverFiles) {
-  const relations = index.routes.filter(entry => !entry.id.startsWith('osm-w')).length;
+function buildManifest(index, indexFile, shardDir, coverFiles) {  const relations = index.routes.filter(entry => !entry.id.startsWith('osm-w')).length;
   const shardFiles = fs.readdirSync(shardDir).sort();
   if (shardFiles.length !== index.shards.length) throw new Error(`shard count mismatch: ${shardFiles.length} files vs ${index.shards.length} entries`);
   if (coverFiles.length !== index.routes.length) throw new Error(`thumbnail count mismatch: ${coverFiles.length} files vs ${index.routes.length} entries`);
@@ -109,6 +108,14 @@ function buildManifest(index, indexFile, shardDir, coverFiles) {
     client: 'https://github.com/liangzh77/vias',
   };
 }
+// A rebuild with unchanged inputs must not rewrite the published identity: when every declared
+// hash matches the previous manifest, keep its generated stamp so unchanged data stays byte-identical.
+function stampGenerated(manifest, previous) {
+  if (!previous || typeof previous.generated !== 'string' || previous.generated === manifest.generated) return manifest;
+  const strip = (value) => { const copy = {...value}; delete copy.generated; return JSON.stringify(copy); };
+  return strip(previous) === strip(manifest) ? {...manifest, generated: previous.generated} : manifest;
+}
+const readManifest = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 
 /* ---------- --export-sample: copy the generated subset into the committed directory ---------- */
 if (exportSample) {
@@ -121,14 +128,16 @@ if (exportSample) {
     console.error('Refusing to commit a sample that claims to be the full catalogue.');
     process.exit(2);
   }
+  const previous = readManifest(path.join(sampleDir, 'manifest.json'));
   fs.rmSync(sampleDir, {recursive: true, force: true});
   fs.cpSync(sampleSource, sampleDir, {recursive: true});
-  fs.writeFileSync(path.join(sampleDir, 'manifest.json'), JSON.stringify(buildManifest(subset, path.join(sampleDir, 'osm-index.json'), path.join(sampleDir, 'shards'), fs.readdirSync(path.join(sampleDir, 'thumbs')).sort().map(file => path.join(sampleDir, 'thumbs', file))), null, 2) + '\n', 'utf8');
+  fs.writeFileSync(path.join(sampleDir, 'manifest.json'), JSON.stringify(stampGenerated(buildManifest(subset, path.join(sampleDir, 'osm-index.json'), path.join(sampleDir, 'shards'), fs.readdirSync(path.join(sampleDir, 'thumbs')).sort().map(file => path.join(sampleDir, 'thumbs', file))), previous), null, 2) + '\n', 'utf8');
   console.log(`EXPORTED_SAMPLE ${path.relative(root, sampleSource)} -> ${path.relative(root, sampleDir)} routes=${subset.routes.length}`);
   process.exit(0);
 }
 
 /* ---------- install into client/src/static/osm ---------- */
+const previousManifest = readManifest(path.join(staticDir, 'manifest.json'));
 if (fs.existsSync(staticDir)) fs.rmSync(staticDir, {recursive: true, force: true});
 fs.mkdirSync(path.join(staticDir, 'routes'), {recursive: true});
 fs.copyFileSync(indexPath, path.join(staticDir, 'index.json'));
@@ -158,7 +167,7 @@ fs.writeFileSync(previewFile, JSON.stringify({
 }, null, 2) + '\n');
 
 /* ---------- machine-readable manifest ---------- */
-const manifest = buildManifest(catalog, path.join(staticDir, 'index.json'), path.join(staticDir, 'routes'), coverFiles);
+const manifest = stampGenerated(buildManifest(catalog, path.join(staticDir, 'index.json'), path.join(staticDir, 'routes'), coverFiles), previousManifest);
 fs.writeFileSync(path.join(staticDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
 const bytes = (dir) => {
