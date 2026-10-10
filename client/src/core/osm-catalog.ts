@@ -283,7 +283,12 @@ export function isGeometryLoaded(route: Route): boolean {
 // `current.value` so the assignment is seen by Vue's reactivity.
 export async function loadGeometry(route: Route): Promise<Route> {
   if (route.segments.length) return route;
-  if (!positionById.has(route.id)) await loadIndex();
+  // The committed preview seeds `positionById`/`map` with its own 14 entries, so a preview id
+  // looks resolvable before the index arrives — and would resolve to shard 0, which belongs to
+  // the full catalogue (the version check then refuses it as 「分片条目数不符」). The shard map
+  // is only meaningful once the real index is adopted, so the index is always awaited first;
+  // it is idempotent and resolves immediately when already loaded.
+  await loadIndex();
   const position = positionById.get(route.id);
   if (position == null) throw new Error('这条轨迹不在公开目录中，无法按需下载');
   const shard = shardOf(map, position);
