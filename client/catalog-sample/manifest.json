@@ -1,0 +1,51 @@
+{
+  "title": "景行（Vias）OpenStreetMap 北京路线快照",
+  "generated": "2026-10-10T04:18:01.598Z",
+  "full": false,
+  "source": "OpenStreetMap 北京抽取（Geofabrik beijing-latest.osm.pbf，ODbL 1.0，© OpenStreetMap 贡献者） · 示例（已提交到仓库的子集）",
+  "extracted": "2026-10-09",
+  "scope": "北京市行政区域 · 23 个路线关系 + 命名路径片段 · 仅示例",
+  "license": {
+    "name": "ODbL 1.0",
+    "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+    "attribution": "© OpenStreetMap contributors",
+    "attributionZh": "© OpenStreetMap 贡献者"
+  },
+  "elevation": {
+    "source": "terrarium 地形瓦片（公有领域 DEM，约 30 m 分辨率）采样插值，非实测",
+    "measured": false,
+    "navigable": false,
+    "note": "海拔为公开地形瓦片采样插值，非实测、未实走验证；爬升/下降未经平滑。"
+  },
+  "counts": {
+    "routes": 10,
+    "relations": 10,
+    "namedPaths": 0,
+    "points": 8998,
+    "shards": 1,
+    "thumbnails": 10
+  },
+  "index": {
+    "path": "static/osm/index.json",
+    "sha256": "74e4d19e768e30ec9496fdc36af79c3328a5d144d8f2784169cbd6c5d93e06d9"
+  },
+  "shards": [
+    {
+      "path": "static/osm/routes/shard-000.json",
+      "routes": 10,
+      "sha256": "40f67bc205800e4022c7302a69af18d65ef1d29cb5530d69e7c9fc61084f0e19"
+    }
+  ],
+  "caveats": [
+    "命名路径片段是 OpenStreetMap 中带名字的道路/步道几何，不是完整行程，也没有起点终点语义。",
+    "全部轨迹未经实走验证，不可用于户外导航。",
+    "数据按现状提供，OpenStreetMap 贡献者与本站不提供任何明示或默示担保。"
+  ],
+  "reproduce": [
+    "下载 Geofabrik 北京 OSM 抽取（ODbL 1.0）。",
+    "node scripts/build-osm-catalog.mjs --all --elevation",
+    "node scripts/prepare-catalog.mjs --full",
+    "node scripts/verify-catalog.mjs data/catalog"
+  ],
+  "client": "https://github.com/liangzh77/vias"
+}

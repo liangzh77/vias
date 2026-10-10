@@ -504,7 +504,8 @@
         }
       ]
     ],
-    "waypoints": []
+    "waypoints": [],
+    "featured": true
   },
   {
     "id": "demo-ridge",
@@ -1011,6 +1012,7 @@
         }
       ]
     ],
-    "waypoints": []
+    "waypoints": [],
+    "featured": true
   }
 ]

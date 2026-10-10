@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:h5": "uni --host 127.0.0.1 --port 8776",
+    "dev:h5": "node ../scripts/prepare-catalog.mjs && uni --host 127.0.0.1 --port 8776",
+    "prepare:catalog": "node ../scripts/prepare-catalog.mjs",
+    "verify:catalog": "node ../scripts/verify-catalog.mjs",
     "build:public": "node ../scripts/build-public.mjs",
     "build:h5": "uni build",
     "postbuild:h5": "node ../scripts/check-public-build.mjs h5",

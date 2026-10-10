@@ -1,6 +1,9 @@
-// Public (non-research) catalog: real Beijing routes derived from OpenStreetMap plus the
-// two synthetic, explicitly non-navigable examples used for the UI walkthrough.
+// Local (non-research, non-catalogue) routes: the two synthetic examples used for the UI
+// walkthrough. They are explicitly marked as not navigable.
+//
+// The OpenStreetMap catalogue is *not* imported here on purpose: its index is fetched as
+// JSON at runtime and its geometry shard by shard (see core/osm-catalog.ts), so no route
+// data ends up in the JavaScript bundle.
 import type {Route} from './track';
-import osm from './osm-routes.json';
 import demo from './demo-routes.json';
-export default [...(osm as unknown as Route[]), ...(demo as unknown as Route[])];
+export default demo as unknown as Route[];

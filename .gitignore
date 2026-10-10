@@ -11,6 +11,11 @@ data/
 *.pem
 *.key
 
+# Catalogue build products: installed from data/catalog by scripts/prepare-catalog.mjs.
+# The publishable subset lives in client/catalog-sample/ and the first-paint preview in
+# client/src/core/featured-routes.json — both committed on purpose.
+client/src/static/osm/
+
 # Private phone research and third-party assets: never publish.
 client/src/core/routes.json
 client/src/static/research/

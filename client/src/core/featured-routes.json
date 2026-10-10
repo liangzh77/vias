@@ -1,0 +1,162 @@
+{
+  "note": "构建产物：由 scripts/prepare-catalog.mjs 从目录索引生成，供首屏“精选”tab 立即渲染（不含坐标）",
+  "elevation": true,
+  "routes": [
+    {
+      "id": "osm-16205150",
+      "title": "西山三峰路线",
+      "activity": "登山",
+      "place": "北京市 · 西山三峰",
+      "distance": 28.627,
+      "ascent": 3131,
+      "descent": 1027,
+      "maxEle": 1284,
+      "points": 3147,
+      "start": [
+        40.067904,
+        116.022761
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-18359613",
+      "title": "玉皇山登山步道",
+      "activity": "登山",
+      "place": "北京市 · 玉皇山",
+      "distance": 1.833,
+      "ascent": 212,
+      "descent": 159,
+      "maxEle": 715,
+      "points": 146,
+      "start": [
+        40.456661,
+        116.057927
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-17213433",
+      "title": "八达岭长城开放段",
+      "place": "北京市 · 八达岭长城",
+      "distance": 3.625,
+      "ascent": 275,
+      "descent": 348,
+      "maxEle": 863,
+      "points": 364,
+      "start": [
+        40.360834,
+        116.015861
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-17501897",
+      "title": "八达岭水关长城游览路线",
+      "place": "北京市 · 八达岭水关长城",
+      "distance": 1.822,
+      "ascent": 190,
+      "descent": 175,
+      "maxEle": 641,
+      "points": 158,
+      "start": [
+        40.335776,
+        116.038817
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-19799028",
+      "title": "环二环绿道",
+      "place": "北京市 · 二环",
+      "distance": 42.11,
+      "ascent": 92,
+      "descent": 63,
+      "maxEle": 77,
+      "points": 1236,
+      "start": [
+        39.898291,
+        116.433852
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-17507479",
+      "title": "潞城中路绿道",
+      "place": "北京市 · 潞城中路",
+      "distance": 3.183,
+      "ascent": 41,
+      "descent": 44,
+      "maxEle": 27,
+      "points": 122,
+      "start": [
+        39.881155,
+        116.768506
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-14127934",
+      "title": "温榆河绿道",
+      "activity": "骑行",
+      "place": "北京市 · 温榆河",
+      "distance": 69.275,
+      "ascent": 53,
+      "descent": 48,
+      "maxEle": 39,
+      "points": 1581,
+      "start": [
+        40.128725,
+        116.373803
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-17507480",
+      "title": "北运河绿道",
+      "activity": "骑行",
+      "place": "北京市 · 北运河",
+      "distance": 49.874,
+      "ascent": 54,
+      "descent": 51,
+      "maxEle": 28,
+      "points": 718,
+      "start": [
+        39.817646,
+        116.784713
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-14107691",
+      "title": "昌平42km绿道",
+      "activity": "骑行",
+      "place": "北京市 · 昌平42km",
+      "distance": 36.302,
+      "ascent": 78,
+      "descent": 36,
+      "maxEle": 79,
+      "points": 1168,
+      "start": [
+        40.050926,
+        116.380602
+      ],
+      "featured": true
+    },
+    {
+      "id": "osm-12098807",
+      "title": "海淀三山五园绿道",
+      "activity": "骑行",
+      "place": "北京市 · 海淀三山五园",
+      "distance": 10.768,
+      "ascent": 35,
+      "descent": 45,
+      "maxEle": 59,
+      "points": 358,
+      "start": [
+        39.979215,
+        116.275214
+      ],
+      "featured": true
+    }
+  ]
+}
