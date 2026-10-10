@@ -21,7 +21,7 @@ npm run dev:h5
 
 ```sh
 npm run typecheck
-npm test                    # 23 个测试（轨迹领域 + 目录/分片校验），无私有数据依赖
+npm test                    # 25 个测试（轨迹领域 + 目录/分片校验），无私有数据依赖
 npm run build:h5
 npm run build:mp-weixin
 npm run verify:catalog      # 逐条校验本地目录：分片、点数、起点、里程、缩略图
