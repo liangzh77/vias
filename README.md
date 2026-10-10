@@ -70,7 +70,7 @@ npm run test:browser
 
 **仓库里只有示例子集，完整快照在服务器上。** 数据集分成三层：
 
-1. **仓库提交的示例子集** `client/catalog-sample/`（16 个文件 / 353,726 B）：14 条精选线路（10 条关系 + 4 条经典命名路径）的索引、缩略图与一个几何分片，克隆后无需任何私有数据即可构建、运行并跑通全部测试。
+1. **仓库提交的示例子集** `client/catalog-sample/`（17 个文件 / 357,648 B）：14 条精选线路（10 条关系 + 4 条经典命名路径）的索引、目录清单、缩略图与一个几何分片，克隆后无需任何私有数据即可构建、运行并跑通全部测试。
 2. **首屏预览** `client/src/core/featured-routes.json`：构建产物，由 `scripts/prepare-catalog.mjs` 从目录索引生成，让“精选”tab 在第一帧就有内容（不含坐标）。
 3. **本地完整快照**（Git 忽略）：`data/catalog/{osm-index.json,thumbs/,shards/}`。由 `scripts/build-osm-catalog.mjs --all --elevation` 从本地（Git 忽略）的 OSM 北京抽取生成，再用 `scripts/prepare-catalog.mjs --full` 安装到 `client/src/static/osm/`（构建产物，同样忽略）。**不会随 Git 发布**；只有部署到自己的服务器时才会公开。
 
