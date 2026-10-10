@@ -36,7 +36,7 @@ for(const rel of files){
  if(b.subarray(0,4).equals(Buffer.from([0,5,22,7])))throw Error('AppleDouble payload');
  if(rel.startsWith('static/')){if(approved[rel]!==sha)throw Error('Unapproved static asset: '+rel);}
  else if(target==='mp-weixin'){
-  if(!/^(app\.(js|json|wxss)|project\.config\.json|common\/[\w.-]+\.js|core\/track\.js|pages\/index\/index\.(js|json|wxml|wxss)|components\/(Icon|TrackMap)\.(js|json|wxml|wxss))$/.test(rel))throw Error('Unknown mini-program output: '+rel);
+  if(!/^(app\.(js|json|wxss)|project\.config\.json|common\/[\w.-]+\.js|core\/(track|public-routes)\.js|pages\/index\/index\.(js|json|wxml|wxss)|components\/(Icon|TrackMap)\.(js|json|wxml|wxss))$/.test(rel))throw Error('Unknown mini-program output: '+rel);
  }else {
   if(rel!=='index.html'&&!/^assets\/[A-Za-z0-9_.-]+\.(js|css|svg|png|woff2)$/.test(rel))throw Error('Unknown file: '+rel);
   if(inventory[rel]!==sha)throw Error('File not in exact compiler inventory: '+rel);

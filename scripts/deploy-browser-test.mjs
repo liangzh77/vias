@@ -46,6 +46,16 @@ try{
  fs.writeFileSync(out+'/osm-export.gpx',osmGpxText);fs.writeFileSync(out+'/osm-export.kml',osmKmlText);
  await page.locator('.sheet-head uni-button').click();
  await page.getByLabel('返回',{exact:true}).click();
+ // Regression guard: repeatedly opening a route and the export sheet while a Leaflet zoom
+ // transition was still in flight used to throw
+ // "Cannot read properties of undefined (reading '_leaflet_pos')" (visible in errors[] below).
+ for(const name of ['玉皇山登山步道','环二环绿道','玉皇山登山步道']){
+  await page.locator('.route-card').filter({hasText:name}).first().click();
+  await page.locator('.detail-actions uni-button').nth(3).click();
+  await page.locator('.sheet-head uni-button').click();
+  await page.getByLabel('返回',{exact:true}).click();
+ }
+ assert.ok(!errors.some(e=>e.includes('_leaflet_pos')),'Leaflet pane transition errors: '+JSON.stringify(errors));
  // The synthetic example keeps the waypoint markers used by the remaining checks.
  const demo=page.locator('.route-card').filter({hasText:'合成示例环线'});
  assert.match(await demo.innerText(),/合成示例/);
