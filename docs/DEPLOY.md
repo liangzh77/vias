@@ -53,7 +53,7 @@ PREVIEW_URL=http://127.0.0.1:8787/vias/ node scripts/deploy-browser-test.mjs
 
 ## 实际发布记录
 
-### 2026-10-10：完整目录异步加载/按需分片（首屏确定性验证成立，GPX 验收口径阻断，待独立复核）
+### 2026-10-10：完整目录异步加载/按需分片（A–F 验收脚本完成，待独立复核）
 
 用户授权后，从干净提交 `f1cc6b18ccc2ed8d3da6a3741061536843963161` 重新构建，公开检查、打包及本机浏览器命令成功；未改应用功能。公开 URL：**https://liangz77.cn/vias/**。
 
@@ -69,8 +69,10 @@ PREVIEW_URL=http://127.0.0.1:8787/vias/ node scripts/deploy-browser-test.mjs
 - **发布完成信号缺失**：已核对的 `deploy-site.py`（不传配置参数）调用 `release-remote.sh`，输出全量归档/磁盘校验成功并已切换；随后串行 `verify-http` 超过 1,800 秒，SSH 工具超时，未获得远端退出码或 `PUBLISH_OK`/`DEPLOY_SITE_OK`。随后只读观察无残留发布进程、current 仍为新版本，未观察到自动回退；不据此声称自动发布流程完整成功。
 - **时序口径修正（PLAN-D）**：上一轮 index 请求起点 154.8 ms、FCP 160 ms 的失败证据保留。索引请求与 FCP 在同一帧内相差数毫秒属竞态，不作为通过依据；首屏不依赖目录由「目录挂起仍正常渲染 + 0 分片」的确定性实验证明。本轮真实公网 Chrome 场景 A：目录请求持续挂起不返回，FCP **152 ms**（< 1500 ms），首页头部/入口可见且可进入「全部」，显示「正在载入路线目录…（先显示 10 条精选）」，没有错误或误导的已完成 0 条/本地示例结果，0 分片、无 pageerror。已人工查看新截图。正常场景仅记录同一 performance 时钟：index 144.9 ms、FCP 148 ms，差 -3.1 ms，不作时序断言。
 - **本轮公网 B/C 已执行**：全部列表 14,430 条（14,407 条命名路径片段），点击加载更多后行数增加，打开前 0 分片；打开首条路线仅请求一次 shard-000，矢量路径与海拔图可见。数据说明包含提取日期、来源、ODbL、非实测与 94 分片，两按钮实际剪贴板内容分别与公网 index/manifest 地址相符，无 pageerror。
-- **新阻断（D）**：真实下载的 GPX 包含 copyright、ODbL 许可 URL、真实 OSM relation/16205150 链接、ele 与非实测声明，但没有 PLAN-D 明确断言的字面字段 `sourceUrl`。源码只读核对显示该属性的值写入 metadata/desc，而非以字段名序列化。停止，不删改该断言掩盖不一致；这是验收口径与产物不一致，是否需要产品修正待独立复核。场景 D 未通过，E（瓦片 503/恢复）、F（本机同一脚本）及修正后的 measure-first-load 实跑均未执行，不宣称 FIRST_LOAD_OK。验收脚本已修正时钟口径、仅语法检查成功；本轮没有重新发布或更改任何应用代码。
-- 微信产物仅编译检查，完整主包超 2 MB，仍需分包及 HTTPS 白名单；无手机、账户、真实 GPS 操作。**公网部署即公开完整数据集（14,430 条，53.4 MB 归档）**。可在仓库根运行 `node scripts/build-public.mjs --sample` 一键构建示例子集（只改本机构建，不会自动切换线上；上线仍须复核与授权）。**尚未通过独立 check-run；等待 Astra high 复核及处置决定。**
+- **D 口径裁定及复跑（PLAN-D2）**：协调者裁定来源链接内嵌在 metadata/desc 即符合当前契约，没有独立 `sourceUrl` 字段；机器可读 link 属另行改进，本轮不改应用。保留原失败证据，仅改 D 断言，严格核对 copyright 的 author 为 OpenStreetMap 贡献者、author/name、license 中 ODbL URL、desc 中 `https://www.openstreetmap.org/relation/16205150`、ele 及「非实测/不可导航」。公网和本机均通过，GPX 均 202,334 字节，SHA-256 `08b9558b856bf2b828356a0cb91e4e328cfdf49ded0412397d306b25c335d51c`。
+- **A–F 脚本结果全部通过，非独立 check-run 结论**：公网同一脚本 A–E 退出 0；本次 A 挂起目录 FCP 172 ms、0 分片，正常 B index 150.4 ms/FCP 152 ms（仅记录）。上一轮 A **152 ms**、B index **144.9 ms/FCP 148 ms** 的证据与结论保留。E 强制 OSM 瓦片 503，加载失败提示出现、矢量路径仍渲染、OpenStreetMap 署名仍在；unroute 后换路线，提示消失、路径渲染，截图 E1/E2 保留。F 使用 `node scripts/preview-release.mjs client/dist/build/h5 8787 127.0.0.1` 和 `PREVIEW_URL=http://127.0.0.1:8787/vias/` 跑同一脚本 A–D（亦完成 E），退出 0、无 pageerror；本机 A FCP 96 ms、目录挂起仍正常渲染且 0 分片，B index 90.2 ms/FCP 96 ms 仅记录。证据分别在 `browser2/public/` 和 `browser2/local/`。仅关闭本轮 8787，41133/8776 未动；未重新发布、修改远端、reload 或更改应用代码。
+- **本机首屏测量**：`node artifacts/measure-first-load.mjs` 退出 0，输出 `FIRST_LOAD_OK`（见 `artifacts/deploy-check-run2/measure-first-load.log`）。挂起目录 FCP **108 ms**，正常 FCP **96 ms**、index **87.7 ms**，0 分片；解码 JS 490,633 字节（< 2 MB），测得总响应体 3,157,033 字节。均为页面 performance 同基准时钟，正常时序仅诊断；首屏承诺的依据仍是「目录挂起仍正常渲染 + 0 分片」，没有放宽阈值或删断言。上述版本/hash/文件树/HTTP/gzip/404/301/15 项基线/Caddy hash 接续 Phase B 留存记录，本轮未重新执行远端核验。
+- 微信产物仅编译检查，完整主包超 2 MB，仍需分包及 HTTPS 白名单；无手机、账户、真实 GPS 操作。**公网部署即公开完整数据集（14,430 条，53.4 MB 归档）**。可在仓库根运行 `node scripts/build-public.mjs --sample` 一键构建示例子集（只改本机构建，不会自动切换线上；上线仍须复核与授权）。**尚未通过独立 check-run；等待 Astra high 独立复核。**
 
 服务器受限目录 `/srv/sites/liangz77.cn/vias/.deploy-20261010T044533Z`（700）仅上传包、manifest、核对过的 `release.py`；复用旧目录中 hash 已核对的协调器与 shell 工具。若后续获准回退，先确认 current 仍为本版本，再用旧版本自己的 manifest 和协调锁执行（本轮未执行）：
 
