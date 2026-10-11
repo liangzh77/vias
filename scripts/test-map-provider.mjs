@@ -30,6 +30,9 @@ try{
   await page.locator('.classic-card').nth(i).click();await ready();
   const s=await state();assert.equal(s.paths.length,2);assert.equal(s.paths[0],s.paths[1]);assert.notEqual(s.paths[0],'M0 0');assert.deepEqual(s.markers,['起','终']);assert.ok(s.evidence.features>0&&s.evidence.pixelColors>1);
   const png=PNG.sync.read(await page.locator('.maplibregl-canvas').screenshot()),colors=new Set();for(let j=0;j<png.data.length;j+=4)colors.add(png.data.subarray(j,j+4).toString('hex'));s.colors=colors.size;assert.ok(colors.size>50);report.cards.push(s);await shot(`mac-card-${i}`);
+  assert.equal(await page.locator('.map-info-content').isVisible(),false,'map explanation starts collapsed');
+  await page.getByLabel('地图说明').click();
+  assert.equal(await page.locator('.map-info-content').isVisible(),true);
   for(let j=0;j<3;j++){
    const link=page.locator('.map-credit a').nth(j),href=await link.getAttribute('href');
    const requestPromise=context.waitForEvent('request',{predicate:r=>r.isNavigationRequest()&&r.url()===href,timeout:10000});
@@ -41,6 +44,8 @@ try{
    await page.locator('.renderer-license').focus();const pending=page.waitForEvent('download');await page.keyboard.press('Enter');const d=await pending;await d.saveAs(`${out}/downloaded-licenses.txt`);
    assert.equal(fs.readFileSync(`${out}/downloaded-licenses.txt`,'utf8'),fs.readFileSync('docs/MAP-LICENSES.txt','utf8'));
   }
+  await page.getByLabel('地图说明').focus();await page.keyboard.press('Enter');
+  assert.equal(await page.locator('.map-info-content').isVisible(),false,'keyboard closes map explanation');
   await back();
  }
  // Suspended initial style, bounded fail, then same-instance recovery.

@@ -7,12 +7,18 @@
   <map class="map-canvas" :latitude="center.lat" :longitude="center.lon" :scale="12" :polyline="nativeLines" :show-location="true" @tap="nativeTap" />
   <!-- #endif -->
   <!-- #ifdef H5 -->
-  <div v-if="tiles" class="map-credit linkable" :data-basemap="baseState">
-   <div><a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> Data from <a :href="COPYRIGHT_URL" target="_blank" rel="noopener">OpenStreetMap</a></div>
-   <div>{{ baseState==='failed'?'底图加载失败，轨迹仍可查看':baseState==='ready'?'向量底图已绘制':'底图加载中，轨迹仍可查看' }} · <a class="renderer-license" href="#renderer-licenses" @click.prevent="showRendererLicenses">渲染库许可</a></div>
-   <div>当前视口请求发送至第三方 OpenFreeMap（可能经 Cloudflare）</div>
+  <div v-if="tiles" class="map-credit compact" :data-basemap="baseState">
+   <details class="map-info">
+    <summary aria-label="地图说明" title="地图说明">ⓘ</summary>
+    <div class="map-info-content">
+     <div><a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> Data from <a :href="COPYRIGHT_URL" target="_blank" rel="noopener">OpenStreetMap</a></div>
+     <div>当前视口请求发送至第三方 OpenFreeMap（可能经 Cloudflare）</div>
+     <a class="renderer-license" href="#renderer-licenses" @click.prevent="showRendererLicenses">渲染库许可</a>
+    </div>
+   </details>
   </div>
-  <view v-else class="map-credit">仅轨迹视图 · 无地形底图</view>
+  <div v-if="tiles&&baseState==='failed'" class="map-failure" role="status">底图加载失败，轨迹仍可查看</div>
+  <view v-if="!tiles" class="map-credit">仅轨迹视图 · 无地形底图</view>
   <!-- #endif -->
   <!-- #ifndef H5 -->
   <view class="map-credit" :class="{linkable:tiles}" @click="openCopyright">{{ credit }}</view>
@@ -226,6 +232,7 @@ defineExpose({fit,zoom,locate});
 </script>
 <style>
 .map-shell{height:100%;width:100%;position:relative;background:#e0e5dc}.map-canvas{height:100%;width:100%;z-index:0;background-color:#dce2d5;background-image:repeating-radial-gradient(ellipse at 25% 50%,transparent 0px,transparent 32px,#c9d4c844 33px,#c9d4c844 34px)}.map-credit{position:absolute;bottom:22px;right:5px;padding:2px 4px;background:#ffffffd9;font-size:9px;color:#555;z-index:2;pointer-events:none}
+.map-credit.compact{padding:0;background:transparent;pointer-events:auto;font-size:12px}.map-info{position:relative}.map-info>summary{list-style:none;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fffffff0;color:#365b60;font-size:20px}.map-info>summary::-webkit-details-marker{display:none}.map-info>summary:focus-visible{outline:2px solid #365b60;outline-offset:2px}.map-info-content{position:absolute;bottom:38px;right:0;width:260px;max-width:calc(100vw - 40px);padding:12px;background:#fffffff5;border-radius:8px;box-shadow:0 2px 12px #0002;line-height:1.6}.map-info-content>div{margin-bottom:8px}.map-failure{position:absolute;top:54px;left:10px;right:10px;text-align:center;padding:5px 8px;background:#ffffffe6;border-radius:6px;color:#765127;font-size:12px;z-index:2;pointer-events:none}
 .map-credit.linkable{pointer-events:auto;max-width:calc(100% - 10px);line-height:1.5}.map-credit a{color:#365b60;text-decoration:underline}.renderer-license{all:unset;position:relative;display:inline-block;color:#365b60;text-decoration:underline;cursor:pointer}.renderer-license::after{display:none;pointer-events:none}.renderer-license:focus-visible{outline:2px solid #365b60;outline-offset:2px}.leaflet-gl-layer{pointer-events:none}
 a.map-credit{display:block}:deep(.track-marker-label){display:block;width:24px;height:24px;line-height:24px;text-align:center;color:white;border:2px solid white;border-radius:50%;font-size:12px;box-shadow:0 1px 4px #3335}.leaflet-container{font-family:inherit}:deep(.leaflet-tile){mix-blend-mode:normal}
 </style>
