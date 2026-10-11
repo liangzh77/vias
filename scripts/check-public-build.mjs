@@ -88,7 +88,7 @@ for(const rel of files){
   else if(rel==='static/osm/manifest.json'){if(!b.equals(fs.readFileSync(manifestPath)))throw Error('Shipped catalogue manifest differs from the installed one');}
   else if(!osmCovers.has(rel)&&!osmShards.has(rel)&&approved[rel]!==sha)throw Error('Unapproved static asset: '+rel);}
  else if(target==='mp-weixin'){
-  if(!/^(app\.(js|json|wxss)|project\.config\.json|common\/[\w.-]+\.js|core\/(track|shard-codec|osm-catalog|public-routes)\.js|pages\/index\/index\.(js|json|wxml|wxss)|components\/(Icon|TrackMap)\.(js|json|wxml|wxss))$/.test(rel))throw Error('Unknown mini-program output: '+rel);
+  if(!/^(app\.(js|json|wxss)|project\.config\.json|common\/[\w.-]+\.js|core\/(track|shard-codec|osm-catalog|public-routes)\.js|pages\/index\/index\.(js|json|wxml|wxss)|components\/(Icon|TrackMap|ElevationChart)\.(js|json|wxml|wxss))$/.test(rel))throw Error('Unknown mini-program output: '+rel);
  }else {
   if(rel!=='index.html'&&!/^assets\/[A-Za-z0-9_.-]+\.(js|css|svg|png|woff2)$/.test(rel))throw Error('Unknown file: '+rel);
   if(inventory[rel]!==sha)throw Error('File not in exact compiler inventory: '+rel);

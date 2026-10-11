@@ -21,8 +21,10 @@
     "@dcloudio/uni-components": "3.0.0-5020420260813003",
     "@dcloudio/uni-h5": "3.0.0-5020420260813003",
     "@dcloudio/uni-mp-weixin": "3.0.0-5020420260813003",
+    "@maplibre/maplibre-gl-leaflet": "0.1.3",
     "fast-xml-parser": "^5.3.0",
     "leaflet": "1.9.4",
+    "maplibre-gl": "5.20.0",
     "vue": "3.4.21",
     "vue-i18n": "9.14.5"
   },

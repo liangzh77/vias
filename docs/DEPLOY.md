@@ -18,7 +18,7 @@ python3 scripts/test_config_transaction.py
 # python3 scripts/test_release_remote.py
 ```
 
-`build:public` 强制 `VIAS_RESEARCH=0`、资源基址 `/vias/`，不会继承私有研究模式。根路径本地开发仍用 `dev:h5`、`build:h5`；私有研究只在本机使用 `VIAS_RESEARCH=1`，绝不发布其输出。公开地图直接加载 `https://tile.openstreetmap.org/` 并署名；外部服务失败时显示错误、保留矢量轨迹，不提供开放瓦片代理。
+`build:public` 强制 `VIAS_RESEARCH=0`、资源基址 `/vias/`，不会继承私有研究模式。根路径本地开发仍用 `dev:h5`、`build:h5`；私有研究只在本机使用 `VIAS_RESEARCH=1`，绝不发布其输出。现有线上 release `20261011T025121Z` 直接加载 `https://tile.openstreetmap.org/`。当前源码正在进行**未部署的本地试验**：H5 按需异步加载 MapLibre GL Leaflet 与官方 `https://tiles.openfreemap.org/styles/liberty` 向量样式，保留 Leaflet/WGS84 轨迹；公开显示 OpenFreeMap、© OpenMapTiles、OpenStreetMap 三个署名链接与第三方视口请求披露。外部服务失败保留轨迹，不提供瓦片代理、批量预取或离线包。此试验不代表已取得中国地图审批或导航资质；全部闸门及独立真机验收通过前不得发布。
 
 `check-public-build.mjs` 校验 `scripts/public-assets.json` 的 SHA-256，动态编译文件必须与 Rollup 生成的独立 `.vias-h5-inventory.json` 文件集和哈希完全匹配，并只允许限定类型；该清单位于构建目录的父目录，不进入公开包。复制构建到其他路径打包时必须同步父目录清单，或用 `VIAS_BUILD_INVENTORY` 指定可信清单；字体即使在 `assets/` 也必须匹配批准字体哈希。未知文件、source map、元数据、软链接、私有标识或路径都会阻断打包。仅清理与已知本机研究源文件逐字节匹配的已知研究副本；未知研究文件也拒绝。失败产物保留用于调查，不能上传。
 
