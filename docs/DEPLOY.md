@@ -2,6 +2,13 @@
 
 当前公开版包含北京 OpenStreetMap 提取快照（14,430 条路线/命名路径片段）、数学合成轨迹、程序绘制的缩略图、原创插画和开源字体。**公网部署即公开完整数据集**，再分发必须遵守 ODbL 署名与许可。命名路径片段不是完整行程；海拔来自地形插值、非实测，轨迹未经实走验证，**不可用于导航**。账户、支付、组队与离线地图等未接入服务。收藏、备注和 GPX 导入保存在浏览器；导出在本机生成。GPS 需要 HTTPS 和主动授权，不应向站点上传私人轨迹。
 
+## 最新发布：20261011T154426Z（2026-10-11）
+
+- 功能提交 `618f6cf`：按用户要求，将 H5 地图右下角三行说明收起为 ⓘ；展开后保留来源链接、第三方请求披露及渲染库许可证下载。正常状态不再显示“已绘制”，失败时单独显示提示；修正无底图提示的条件。收起署名不代表已满足提供方署名要求，个人测试不自动豁免。
+- 类型检查、45 项单测、公开构建及更新后的完整地图行为回归通过；本地首轮链接 popup 等待超时保留在 `artifacts/compact-credit/browser.log`，修正条件后的完整重跑通过，正式 URL 同脚本也通过（拖动读回9次、失败/恢复、说明点击/键盘收起与链接/许可下载、errors=[]）。H5 JS 1,582,436 B。未做新的独立审查或真机验收，未连接手机。
+- 已提交并推送。远端 `HTTP_OK files=14544 SHA-256 matches; metadata_404=14552`、`PUBLISH_OK`、`DEPLOY_SITE_OK`、`DEPLOY_EXIT=0`。`current=releases/20261011T154426Z`；上一版 `20261011T094122Z` 保留回退；包清单在 `.deploy-20261011T154426Z/manifest.json`。未改 Caddy 配置或发布工具。证据在 gitignored `artifacts/compact-credit/`。
+- 下文 OpenFreeMap 首次发布章节及其独立 approve 仅描述历史版本，不能当作本次 UI 变更的新独立审查。
+
 ## 本地准备
 
 ```sh
@@ -18,7 +25,7 @@ python3 scripts/test_config_transaction.py
 # python3 scripts/test_release_remote.py
 ```
 
-`build:public` 强制 `VIAS_RESEARCH=0`、资源基址 `/vias/`，不会继承私有研究模式。根路径本地开发仍用 `dev:h5`、`build:h5`；私有研究只在本机使用 `VIAS_RESEARCH=1`，绝不发布其输出。历史 release `20261011T025121Z` 直接加载 `https://tile.openstreetmap.org/`，真机底图失败；当前线上 release `20261011T094122Z` 的 H5 按需异步加载 MapLibre GL Leaflet 与官方 `https://tiles.openfreemap.org/styles/liberty` 向量样式，保留 Leaflet/WGS84 轨迹；公开显示 OpenFreeMap、© OpenMapTiles、OpenStreetMap 三个可点署名链接与第三方视口请求披露。外部服务失败保留轨迹，不提供瓦片代理、批量预取或离线包。用户明确要求先发布、后补最新修复版的独立真机复验，故当前是**待真机验收的临时技术版本**；桌面独立 approve 不等于真机或中国地图审批/导航资质已通过。
+`build:public` 强制 `VIAS_RESEARCH=0`、资源基址 `/vias/`，不会继承私有研究模式。根路径本地开发仍用 `dev:h5`、`build:h5`；私有研究只在本机使用 `VIAS_RESEARCH=1`，绝不发布其输出。历史 release `20261011T025121Z` 直接加载 `https://tile.openstreetmap.org/`，真机底图失败；OpenFreeMap 首次上线 release `20261011T094122Z` 的 H5 按需异步加载 MapLibre GL Leaflet 与官方 `https://tiles.openfreemap.org/styles/liberty` 向量样式，保留 Leaflet/WGS84 轨迹；公开显示 OpenFreeMap、© OpenMapTiles、OpenStreetMap 三个可点署名链接与第三方视口请求披露。外部服务失败保留轨迹，不提供瓦片代理、批量预取或离线包。用户明确要求先发布、后补最新修复版的独立真机复验，故当前是**待真机验收的临时技术版本**；桌面独立 approve 不等于真机或中国地图审批/导航资质已通过。
 
 `check-public-build.mjs` 校验 `scripts/public-assets.json` 的 SHA-256，动态编译文件必须与 Rollup 生成的独立 `.vias-h5-inventory.json` 文件集和哈希完全匹配，并只允许限定类型；该清单位于构建目录的父目录，不进入公开包。复制构建到其他路径打包时必须同步父目录清单，或用 `VIAS_BUILD_INVENTORY` 指定可信清单；字体即使在 `assets/` 也必须匹配批准字体哈希。未知文件、source map、元数据、软链接、私有标识或路径都会阻断打包。仅清理与已知本机研究源文件逐字节匹配的已知研究副本；未知研究文件也拒绝。失败产物保留用于调查，不能上传。
 
