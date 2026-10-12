@@ -1,5 +1,5 @@
 <template>
- <view class="map-shell" :data-viewport="viewportText">
+ <view class="map-shell" :class="{'preview-map':preview}" :data-viewport="viewportText" :data-state="baseState">
   <!-- #ifdef H5 -->
   <div ref="host" class="map-canvas" aria-label="路线交互地图"></div>
   <!-- #endif -->
@@ -7,7 +7,7 @@
   <map class="map-canvas" :latitude="center.lat" :longitude="center.lon" :scale="12" :polyline="nativeLines" :show-location="true" @tap="nativeTap" />
   <!-- #endif -->
   <!-- #ifdef H5 -->
-  <div v-if="tiles" class="map-credit compact" :data-basemap="baseState">
+  <div v-if="tiles&&!preview" class="map-credit compact" :data-basemap="baseState">
    <details class="map-info">
     <summary aria-label="地图说明" title="地图说明">ⓘ</summary>
     <div class="map-info-content" :style="{top:infoTop}">
@@ -17,9 +17,10 @@
     </div>
    </details>
   </div>
-  <div v-if="tiles" class="map-attribution"><a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> · <a :href="COPYRIGHT_URL" target="_blank" rel="noopener">© OpenStreetMap</a></div>
-  <div v-if="tiles&&baseState==='failed'" class="map-failure" role="status">底图加载失败，轨迹仍可查看</div>
-  <view v-if="!tiles" class="map-credit">仅轨迹视图 · 无地形底图</view>
+  <div v-if="tiles&&!preview" class="map-attribution"><a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> · <a :href="COPYRIGHT_URL" target="_blank" rel="noopener">© OpenStreetMap</a></div>
+  <div v-if="tiles&&baseState==='failed'" class="map-failure" role="status">{{preview?'底图不可用 · 仅轨迹':'底图加载失败，轨迹仍可查看'}}</div>
+  <div v-if="preview&&tiles&&baseState==='loading'" class="map-failure" role="status">底图加载中 · 当前仅轨迹</div>
+  <view v-if="!tiles&&!preview" class="map-credit">仅轨迹视图 · 无地形底图</view>
   <!-- #endif -->
   <!-- #ifndef H5 -->
   <view class="map-credit" :class="{linkable:tiles}" @click="openCopyright">{{ credit }}</view>
@@ -33,7 +34,7 @@ import type {Point} from '../core/track';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 // #endif
-const props=withDefaults(defineProps<{segments:Point[][];waypoints?:Point[];tiles?:boolean;editable?:boolean;position?:Point|null;overview?:boolean;overlays?:{id:string;segments:Point[][]}[];clusters?:{lat:number;lon:number;count:number}[];selected?:string}>(),{tiles:true,editable:false});
+const props=withDefaults(defineProps<{segments:Point[][];waypoints?:Point[];tiles?:boolean;editable?:boolean;position?:Point|null;preview?:boolean;overview?:boolean;initialViewport?:{center:[number,number];zoom:number};overlays?:{id:string;segments:Point[][]}[];clusters?:{lat:number;lon:number;count:number}[];selected?:string}>(),{tiles:true,editable:false});
 // #ifdef H5
 // Leaflet 1.9.4 deletes _mapPane in Map.remove() but never clears _animatingZoom (Map.stop()
 // only cancels the fly-to frame and the pan animation). A transitionend still queued on the
@@ -84,7 +85,7 @@ async function showRendererLicenses(){
 let baseGeneration=0, baseTimer:ReturnType<typeof setTimeout>|undefined, disposeBase:(()=>void)|undefined;
 function clearBase(){baseGeneration++;clearTimeout(baseTimer);disposeBase?.();disposeBase=undefined;if(base&&map)map.removeLayer(base);base=undefined;}
 function draw(fit=true){if(!map||!lines)return;lines.clearLayers();for(const seg of props.segments){if(!seg.length)continue;const pts=seg.map(p=>[p.lat,p.lon] as L.LatLngTuple);L.polyline(pts,{color:'#fff',weight:8,opacity:.9}).addTo(lines);L.polyline(pts,{color:'#00bd74',weight:4}).addTo(lines);}
-const points=props.segments.flat();if(points.length){for(const [i,label,color] of [[0,'起','#00bb78'],[points.length-1,'终','#ff664a']] as const){const p=points[i];L.marker([p.lat,p.lon],{icon:L.divIcon({className:'track-marker',html:`<div class="track-marker-label" style="background:${color}">${label}</div>`,iconSize:[24,24],iconAnchor:[12,12]})}).addTo(lines);}if(fit)map.fitBounds(L.latLngBounds(points.map(p=>[p.lat,p.lon] as L.LatLngTuple)),{padding:[36,50],maxZoom:16});}
+const points=props.segments.flat();if(points.length){if(!props.preview)for(const [i,label,color] of [[0,'起','#00bb78'],[points.length-1,'终','#ff664a']] as const){const p=points[i];L.marker([p.lat,p.lon],{icon:L.divIcon({className:'track-marker',html:`<div class="track-marker-label" style="background:${color}">${label}</div>`,iconSize:[24,24],iconAnchor:[12,12]})}).addTo(lines);}if(fit)map.fitBounds(L.latLngBounds(points.map(p=>[p.lat,p.lon] as L.LatLngTuple)),{padding:props.preview?[14,14]:[36,50],maxZoom:16,animate:!props.preview});}
 (props.waypoints||[]).forEach((p,i)=>L.circleMarker([p.lat,p.lon],{color:'#fff',weight:2,fillColor:'#fb6874',fillOpacity:1,radius:4}).bindTooltip(`标注点 ${i+1}`).addTo(lines!));}
 async function setTiles(){
  clearBase();tileError.value=false;baseState.value='loading';if(!map||!props.tiles)return;
@@ -214,16 +215,16 @@ async function setTiles(){
    delete canvas.dataset.renderEvidence;
   };
   schedule();
- }catch{fail();}
+ }catch{if(base&&map){try{map.removeLayer(base);}catch{}base=undefined;}fail();}
 }
 function overviewDraw(){
  if(!map||!overviewLines)return;overviewLines.clearLayers();
  for(const r of props.overlays||[])for(const seg of r.segments){if(seg.length<2)continue;L.polyline(seg.map(p=>[p.lat,p.lon] as L.LatLngTuple),{color:r.id===props.selected?'#f45b34':'#009d6b',weight:r.id===props.selected?7:4}).on('click',e=>{L.DomEvent.stopPropagation(e);emit('select',r.id);}).addTo(overviewLines);}
  for(const c of props.clusters||[])L.marker([c.lat,c.lon],{icon:L.divIcon({className:'overview-cluster',html:`<button aria-label="放大路线聚合 ${c.count}">${c.count}</button>`,iconSize:[38,38]})}).on('click',()=>map?.setView([c.lat,c.lon],map.getZoom()+2)).addTo(overviewLines);
 }
-function viewport(){if(!map)return;const b=map.getBounds();const v={bounds:[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()] as [number,number,number,number],zoom:map.getZoom()};viewportText.value=JSON.stringify({...v,center:[map.getCenter().lat,map.getCenter().lng]});emit('viewport',v);}
+function viewport(){if(!map)return;const b=map.getBounds();const v={bounds:[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()] as [number,number,number,number],zoom:map.getZoom(),center:[map.getCenter().lat,map.getCenter().lng] as [number,number]};viewportText.value=JSON.stringify(v);emit('viewport',v);}
 function updatePosition(){if(!map)return;if(dot)map.removeLayer(dot);if(props.position)dot=L.circleMarker([props.position.lat,props.position.lon],{color:'#fff',weight:3,fillColor:'#248dff',fillOpacity:1,radius:8}).addTo(map);}
-onMounted(async()=>{await nextTick();if(!host.value)return;infoDetails=host.value.parentElement?.querySelector<HTMLDetailsElement>('.map-info')||undefined;infoDetails?.addEventListener('toggle',positionInfo);map=L.map(host.value,{zoomControl:false,attributionControl:false,fadeAnimation:false}).setView([center.value.lat,center.value.lon],12);lines=L.layerGroup().addTo(map);overviewLines=L.layerGroup().addTo(map);if(props.overview)map.setView([40.03,116.2],9);setTiles();draw();overviewDraw();map.on('moveend',viewport);viewport();map.on('click',e=>{if(props.editable)emit('point',{lat:e.latlng.lat,lon:e.latlng.lng});});observer=new ResizeObserver(()=>{map?.invalidateSize();positionInfo();});observer.observe(host.value);updatePosition();});
+onMounted(async()=>{await nextTick();if(!host.value)return;infoDetails=host.value.parentElement?.querySelector<HTMLDetailsElement>('.map-info')||undefined;infoDetails?.addEventListener('toggle',positionInfo);map=L.map(host.value,{zoomControl:false,attributionControl:false,fadeAnimation:false,dragging:!props.preview,scrollWheelZoom:!props.preview,touchZoom:!props.preview,doubleClickZoom:!props.preview,boxZoom:!props.preview,keyboard:!props.preview,zoomAnimation:!props.preview}).setView([center.value.lat,center.value.lon],12);lines=L.layerGroup().addTo(map);overviewLines=L.layerGroup().addTo(map);if(props.overview)map.setView(props.initialViewport?.center||[40.03,116.2],props.initialViewport?.zoom??9);setTiles();draw();overviewDraw();map.on('moveend',viewport);viewport();map.on('click',e=>{if(props.editable)emit('point',{lat:e.latlng.lat,lon:e.latlng.lng});});observer=new ResizeObserver(()=>{map?.invalidateSize();positionInfo();});observer.observe(host.value);updatePosition();});
 watch([()=>props.overlays,()=>props.clusters,()=>props.selected],overviewDraw,{deep:true});
 watch(()=>props.tiles,async()=>{infoDetails?.removeEventListener('toggle',positionInfo);await nextTick();if(unmounted)return;infoDetails=host.value?.parentElement?.querySelector<HTMLDetailsElement>('.map-info')||undefined;infoDetails?.addEventListener('toggle',positionInfo);});
 watch(()=>props.segments,()=>draw(!props.editable&&!props.overview),{deep:true});watch(()=>props.waypoints,()=>draw(false),{deep:true});watch(()=>props.tiles,setTiles);watch(()=>props.position,updatePosition,{deep:true});
@@ -251,7 +252,7 @@ if(map&&props.position)map.setView([props.position.lat,props.position.lon],16);
 defineExpose({fit,zoom,locate});
 </script>
 <style>
-.map-shell{height:100%;width:100%;position:relative;background:#e0e5dc}.map-canvas{height:100%;width:100%;z-index:0;background-color:#dce2d5;background-image:repeating-radial-gradient(ellipse at 25% 50%,transparent 0px,transparent 32px,#c9d4c844 33px,#c9d4c844 34px)}.map-credit{position:absolute;bottom:22px;right:5px;padding:2px 4px;background:#ffffffd9;font-size:9px;color:#555;z-index:2;pointer-events:none}
+.preview-map{pointer-events:none}.preview-map .map-failure{top:6px;font-size:11px}.map-shell{height:100%;width:100%;position:relative;background:#e0e5dc}.map-canvas{height:100%;width:100%;z-index:0;background-color:#dce2d5;background-image:repeating-radial-gradient(ellipse at 25% 50%,transparent 0px,transparent 32px,#c9d4c844 33px,#c9d4c844 34px)}.map-credit{position:absolute;bottom:22px;right:5px;padding:2px 4px;background:#ffffffd9;font-size:9px;color:#555;z-index:2;pointer-events:none}
 .map-credit.compact{padding:0;background:transparent;pointer-events:auto;font-size:12px;z-index:4}.map-info{position:relative}.map-info>summary{list-style:none;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fffffff0;color:#365b60;font-size:20px}.map-info>summary::-webkit-details-marker{display:none}.map-info>summary:focus-visible{outline:2px solid #365b60;outline-offset:2px}.map-info-content{position:fixed;top:64px;bottom:auto;right:max(20px,calc((100vw - 430px)/2 + 20px));z-index:20;box-sizing:border-box;width:284px;max-width:calc(100vw - 40px);max-height:calc(100dvh - 84px);overflow:auto;padding:12px;background:#fffffff5;border-radius:8px;box-shadow:0 2px 12px #0002;line-height:1.6}.map-info-content>div{margin-bottom:8px}.map-failure{position:absolute;top:54px;left:10px;right:10px;text-align:center;padding:5px 8px;background:#ffffffe6;border-radius:6px;color:#765127;font-size:12px;z-index:2;pointer-events:none}
 .map-attribution{position:absolute;bottom:2px;right:5px;z-index:2;background:#ffffffe8;padding:2px 4px;font-size:10px;line-height:14px}.map-attribution a{color:#365b60;text-decoration:underline}.overview-cluster button{background:#00865e;color:white;border:2px solid white;border-radius:50%;width:38px;height:38px;padding:0;font-size:12px;box-shadow:0 2px 5px #0003}
 .map-credit.linkable{pointer-events:auto;max-width:calc(100% - 10px);line-height:1.5}.map-credit a{color:#365b60;text-decoration:underline}.renderer-license{all:unset;position:relative;display:inline-block;color:#365b60;text-decoration:underline;cursor:pointer}.renderer-license::after{display:none;pointer-events:none}.renderer-license:focus-visible{outline:2px solid #365b60;outline-offset:2px}.leaflet-gl-layer{pointer-events:none}

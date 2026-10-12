@@ -6,6 +6,12 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import rendererLicenses from '../../../docs/MAP-LICENSES.txt?raw';
 export {rendererLicenses};
 export function vectorBasemap(){
- return L.maplibreGL({style:'https://tiles.openfreemap.org/styles/liberty',
+ const layer=L.maplibreGL({style:'https://tiles.openfreemap.org/styles/liberty',
   attributionControl:false,interactive:false,renderWorldCopies:false});
+ // The adapter registers Leaflet events before _initGL. If WebGL construction
+ // throws, its stock onRemove dereferences a missing GL map, leaving move/resize
+ // listeners behind. Allow public removeLayer to complete that partial teardown.
+ const remove=layer.onRemove;
+ layer.onRemove=function(map){if(this.getMaplibreMap())return remove.call(this,map);this.getContainer()?.remove();return this;};
+ return layer;
 }

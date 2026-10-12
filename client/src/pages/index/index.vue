@@ -16,8 +16,8 @@
    <view v-if="research" class="hero-wrap"><image class="hero" :src="asset('banner')" mode="aspectFill" @click="unavailable('本地展示横幅','此横幅仅作为本地视觉研究素材，不提供租车或商业活动入口。')"/><text class="hero-caption">奔赴山野 自在出行</text></view>
    <template v-else>
     <view class="section-title route-section"><text>经典线路</text><button @click="go('routes')">查看全部 ›</button></view>
-    <view class="classic-grid"><button v-for="r in classicRoutes" :key="r.id" class="classic-card" :aria-label="'打开 '+r.title" @click="openRoute(r)"><image :src="r.cover" mode="aspectFill"/><view class="classic-text"><text>{{ r.title }}</text><text class="muted">{{ r.activity }} · {{ r.distance.toFixed(2) }} 公里 · 爬升 {{ r.ascent }} m</text></view></button></view>
-    <view class="home-note">4 条知名北京路线 · 缩略图按真实 OpenStreetMap 几何绘制 · 命名路径片段不是完整行程，未经实走验证，不可导航</view>
+    <view class="classic-grid"><RouteCard classic v-for="r in classicRoutes" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" /></view>
+    <view class="home-note">4 条知名北京路线 · 可见卡片按需嵌入真实底图与轨迹 · 命名路径片段不是完整行程，未经实走验证，不可导航</view>
    </template>
    <view class="home-entries"><button v-for="entry in entries" :key="entry.page" @click="go(entry.page)"><image v-if="research" :src="asset('entry-'+entry.asset)"/><Icon v-else :name="entry.icon" :size="30" color="#00bd7b"/><text>{{ entry.name }}</text></button></view>
    <view class="section-bar"></view>
@@ -26,7 +26,7 @@
    <view v-else class="photo-empty"><Icon name="photo" :size="34" color="#c9c8cf"/><text>还没有照片</text><text class="muted">没有真实照片就留空：本版不内置示例照片或占位图。照片只能来自你自己的记录。</text><button @click="go('record')">去记录</button></view>
    <template v-if="research">
     <view class="section-title route-section"><text>精选线路</text><button @click="go('routes')">查看全部 ›</button></view>
-    <button v-for="r in routes.slice(0,2)" :key="r.id" class="home-route" @click="openRoute(r)"><image :src="r.cover" mode="aspectFill"/><view><text>{{ r.title }}</text><text class="muted">{{ r.activity }} · {{ r.distance.toFixed(2) }} 公里</text></view></button>
+    <RouteCard v-for="r in routes.slice(0,2)" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" />
    </template>
    <button class="research-link" @click="sheet='about'">本地研究 · 数据来源与功能边界</button>
   </scroll-view>
@@ -37,11 +37,7 @@
     <view v-if="routeTab==='all'" class="info-strip"><template v-if="catalogState!=='ready'&&catalogState!=='error'">正在载入路线目录…（先显示 {{ officialOsmRoutes.length }} 条精选）</template><template v-else-if="catalogState==='error'">路线目录加载失败：{{ catalogError }}<button @click="retryCatalog">重试</button></template><template v-else>{{ catalogFull?'北京 OSM 提取快照':'本地示例目录' }}：{{ officialOsmRoutes.length }} 条 OpenStreetMap 路线（其中 {{ wayCount }} 条为命名路径片段，不是完整行程）+ {{ demoRoutes.length }} 条合成示例 · {{ catalogNotice }} · 数据 © OpenStreetMap 贡献者 ODbL 1.0<button @click="go('data')">数据说明</button><button @click="routeTab='nearby'">按距离排序</button></template></view>
     <view v-if="routeTab==='nearby'" class="info-strip">本地目录{{ nearbySort==='distance'?(position?'按距起点距离排序':'未获取定位，按目录顺序展示'):nearbySort==='length'?'按里程排序':'按爬升排序' }} · 共 {{ routes.length }} 条路线{{ catalogState==='loading'?'（路线目录仍在载入中）':catalogState==='error'?'（路线目录加载失败）':'' }}，不是全站附近列表。<button @click="nearbySort='distance';locate()">定位排序</button></view>
     <view v-if="routeTab==='nearby'" class="nearby-sort"><button v-for="s in nearbySorts" :key="s.key" class="nearby-sort-option" :class="{active:nearbySort===s.key}" @click="nearbySort=s.key">{{ s.label }}</button></view>
-    <button v-for="r in shownRoutes" :key="r.id" :class="routeTab==='featured'?'route-card':'route-row'" @click="openRoute(r)">
-     <view v-if="routeTab==='featured'" class="route-author"><view class="avatar">{{ r.author[0] }}</view><text>{{ r.author }}</text></view>
-     <image v-if="r.cover" :src="r.cover" mode="aspectFill"/><view v-else class="route-cover-placeholder"><Icon name="route" :size="45" color="#00bc79"/></view>
-     <view class="route-title"><text>{{ r.title }}</text><text v-if="routeTab!=='featured'" class="muted">{{ r.activity }} · {{ r.distance.toFixed(2) }} km<text v-if="routeTab==='nearby'"> · 爬升 {{ r.ascent }} m</text> · #{{ r.id }}<text v-if="routeTab==='nearby'&&position"> · 距起点 {{ (distanceToStart(r)/1000).toFixed(1) }} km</text></text><text v-if="routeTab==='nearby'" class="nearby-place">{{ r.place }}</text></view>
-    </button>
+    <RouteCard v-for="r in shownRoutes" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" />
     <button v-if="visible<displayedRoutes.length" class="primary load-more" @click="loadMore">加载更多（{{ shownRoutes.length }} / {{ displayedRoutes.length }}）</button>
     <view v-else class="list-end">已展示全部 {{ displayedRoutes.length }} 条{{ routeTab==='featured'?'精选与本地路线':'本地路线'}}</view>
    </scroll-view>
@@ -55,7 +51,7 @@
    <button class="cell" @click="sheet='distanceFilter'"><text>里程</text><text class="muted">{{ distanceFilter }} ›</text></button>
    <view class="cell"><text>只看已收藏</text><switch :checked="onlyFavorites" color="#00bf7c" @change="onlyFavorites=eventValue($event)" /></view>
    <button class="primary search-submit" @click="searchDone=true">搜索</button>
-   <template v-if="searchDone"><view class="field-label">本地结果 · {{ searchResults.length }} 条</view><button v-for="r in searchShown" :key="r.id" class="route-row" @click="openRoute(r)"><image v-if="r.cover" :src="r.cover" mode="aspectFill"/><Icon v-else name="route" :size="40"/><view class="route-title"><text>{{ r.title }}</text><text class="muted">{{ r.activity }} · {{ r.distance.toFixed(2) }} km · #{{ r.id }}</text></view></button><button v-if="visible<searchResults.length" class="primary load-more" @click="loadMore">加载更多（{{ searchShown.length }} / {{ searchResults.length }}）</button><view v-if="!searchResults.length" class="empty"><Icon name="search" :size="42" color="#bbb"/><text>{{ catalogState==='loading'?'正在载入路线目录，结果可能还不完整…':catalogState==='error'?'路线目录加载失败，只搜索到本地与示例路线':'没有找到匹配的本地路线' }}</text><button v-if="catalogState==='ready'" @click="resetSearch">清除筛选</button><button v-else-if="catalogState==='error'" @click="retryCatalog">重试载入目录</button></view></template>
+   <template v-if="searchDone"><view class="field-label">本地结果 · {{ searchResults.length }} 条</view><RouteCard v-for="r in searchShown" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" /><button v-if="visible<searchResults.length" class="primary load-more" @click="loadMore">加载更多（{{ searchShown.length }} / {{ searchResults.length }}）</button><view v-if="!searchResults.length" class="empty"><Icon name="search" :size="42" color="#bbb"/><text>{{ catalogState==='loading'?'正在载入路线目录，结果可能还不完整…':catalogState==='error'?'路线目录加载失败，只搜索到本地与示例路线':'没有找到匹配的本地路线' }}</text><button v-if="catalogState==='ready'" @click="resetSearch">清除筛选</button><button v-else-if="catalogState==='error'" @click="retryCatalog">重试载入目录</button></view></template>
   </scroll-view>
 
   <template v-if="page==='detail'">
@@ -101,7 +97,7 @@
   <template v-if="page==='library'||page==='favorites'||page==='history'">
    <view v-if="page==='library'" class="tabs"><button :class="{active:libraryTab==='local'}" @click="libraryTab='local'">本地({{localRoutes.length}})</button><button :class="{active:libraryTab==='cloud'}" @click="libraryTab='cloud'">云端(未连接)</button></view>
    <scroll-view scroll-y class="page-scroll"><view v-if="page!=='library'&&catalogState!=='ready'" class="info-strip">{{ catalogState==='loading'?'正在载入路线目录，收藏与浏览记录可能还不完整…':'路线目录加载失败，收藏与浏览记录可能不完整' }}<button @click="retryCatalog">重试</button></view><template v-if="libraryTab==='local'||page!=='library'"><template v-if="page==='library'"><button class="library-entry" @click="importFile"><Icon name="folder" :size="30" color="#00be7d"/><view><text>导入的轨迹</text><text class="muted">GPX 文件导入</text></view><text>＋</text></button><button class="library-entry" @click="startPlan"><Icon name="edit" :size="30" color="#00be7d"/><view><text>线路规划</text><text class="muted">通过地图点击创建本地路线</text></view><text>›</text></button><view class="section-bar"></view><view class="field-label">记录与导入 · {{localRoutes.length}}条</view></template>
-    <button v-for="r in libraryRoutes" :key="r.id" class="route-row" @click="openRoute(r)"><image v-if="r.cover" :src="r.cover" mode="aspectFill"/><Icon v-else name="route" :size="36" color="#00be7d"/><view class="route-title"><text>{{r.title}}</text><text class="muted">{{r.distance.toFixed(2)}} km · {{r.source}}</text></view></button><view v-if="!libraryRoutes.length" class="empty"><Icon name="route" :size="54" color="#ccc"/><text>暂无{{page==='favorites'?'收藏':page==='history'?'浏览记录':'轨迹'}}</text><text class="muted">开始记录你的山野之旅吧～</text><button class="primary" @click="go('record')">开始记录</button><button v-if="page==='library'" @click="importFile">导入 GPX</button></view>
+    <RouteCard v-for="r in libraryRoutes" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" /><view v-if="!libraryRoutes.length" class="empty"><Icon name="route" :size="54" color="#ccc"/><text>暂无{{page==='favorites'?'收藏':page==='history'?'浏览记录':'轨迹'}}</text><text class="muted">开始记录你的山野之旅吧～</text><button class="primary" @click="go('record')">开始记录</button><button v-if="page==='library'" @click="importFile">导入 GPX</button></view>
    </template><view v-else class="empty"><Icon name="cloud" :size="45"/><text>未连接云端服务</text><text class="muted">本地数据不会上传到六只脚账户</text></view></scroll-view>
   </template>
 
@@ -131,6 +127,7 @@ import {ref,computed,watch,onMounted,onBeforeUnmount,type Ref} from 'vue';
 // #ifdef H5
 import HomeMap from '../../components/HomeMap.vue';
 // #endif
+import RouteCard from '../../components/RouteCard.vue';
 import DetailSheet from '../../components/DetailSheet.vue';
 import ElevationChart from '../../components/ElevationChart.vue';import TrackMap from '../../components/TrackMap.vue';import Icon from '../../components/Icon.vue';
 import rawRoutes from 'virtual:vias-catalog';

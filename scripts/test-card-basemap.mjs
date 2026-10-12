@@ -1,0 +1,47 @@
+// Public real-provider desktop regression, no phone or persistent image cache.
+import {chromium} from '../client/node_modules/playwright/index.mjs';
+import {PNG} from '../client/node_modules/pngjs/lib/png.js';
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const out=process.env.CARD_TEST_OUT||'artifacts/card-basemap/execution/browser';fs.mkdirSync(out,{recursive:true});
+const url=process.env.CARD_TEST_URL||'http://127.0.0.1:8793/vias/';
+const report={errors:[],requests:{shards:0,provider:0},cards:[],max:0,reads:0};
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true});
+await context.addInitScript(()=>{window.__reads=0;for(const p of [WebGLRenderingContext.prototype,WebGL2RenderingContext.prototype]){const orig=p.readPixels;p.readPixels=function(...args){window.__reads++;return orig.apply(this,args);};}});
+const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));page.on('request',r=>{if(r.url().includes('/static/osm/routes/'))report.requests.shards++;if(r.url().includes('openfreemap.org'))report.requests.provider++;});
+const cards=()=>page.locator('.route-preview-card');
+const ready=card=>card.locator('.map-shell[data-state="ready"]').waitFor({timeout:50000});
+async function evidence(card,name){const handle=await card.elementHandle();const snapshot=await page.waitForFunction(el=>{const shell=el?.querySelector('.map-shell[data-state="ready"]'),canvas=shell?.querySelector('.maplibregl-canvas');const raw=canvas?.getAttribute('data-render-evidence'),viewport=shell?.getAttribute('data-viewport');if(!raw||!viewport)return false;const evidence=JSON.parse(raw);return evidence.features>0&&evidence.pixelColors>1&&evidence.failedTiles===0?{evidence,viewport:JSON.parse(viewport)}:false;},handle,{timeout:50000});const current=await snapshot.jsonValue();await snapshot.dispose();await handle.dispose();const canvas=card.locator('.maplibregl-canvas');const e=current.evidence;assert.ok(e.features>0&&e.pixelColors>1&&e.failedTiles===0);const png=PNG.sync.read(await canvas.screenshot());const colors=new Set();for(let i=0;i<png.data.length;i+=4)colors.add(png.data.subarray(i,i+4).toString('hex'));assert.ok(colors.size>50);const path=await card.locator('.leaflet-overlay-pane path').evaluateAll(paths=>paths.map(p=>p.getAttribute('d')));assert.ok(path.length>=2&&path.length%2===0);for(let i=0;i<path.length;i+=2)assert.equal(path[i],path[i+1]);const id=await card.getAttribute('data-route-id');const index=JSON.parse(fs.readFileSync('client/dist/build/h5/static/osm/index.json'));let position=index.routes.findIndex(r=>r.id===id),shard=0;while(position>=index.shards[shard])position-=index.shards[shard++];const packed=JSON.parse(fs.readFileSync(`client/dist/build/h5/static/osm/routes/shard-${String(shard).padStart(3,'0')}.json`))[id.slice(4)];const viewport=current.viewport;const b=viewport.bounds;assert.equal(path.length,packed.length*2,'separate stroke per segment, no bridging');for(const [lat,lon] of packed.flat())assert.ok(lat>=b[0]&&lat<=b[2]&&lon>=b[1]&&lon<=b[3],'fit every original coordinate');report.cards.push({id,name,evidence:e,colors:colors.size,path,viewport,points:packed.flat().length});await card.screenshot({path:`${out}/${name}.png`});}
+async function gradual(card,online){
+ const scroller=page.locator('.uni-scroll-view .uni-scroll-view').first();
+ const bottom=await scroller.evaluate(el=>Math.min(innerHeight,el.getBoundingClientRect().bottom));
+ const positions=[];
+ for(const height of [0,2,5,12,100,300]){
+  await scroller.evaluate((el,{id,bottom,height})=>{const card=document.querySelector(`[data-route-id="${id}"]`);el.scrollTop+=card.getBoundingClientRect().top-(bottom-height);},{id:await card.getAttribute('data-route-id'),bottom,height});
+  await page.waitForTimeout(160);positions.push(await card.getAttribute('data-active'));
+ }
+ await page.waitForFunction(id=>document.querySelector(`[data-route-id="${id}"]`)?.dataset.active==='true',await card.getAttribute('data-route-id'));
+ await card.locator('.leaflet-overlay-pane path').first().waitFor();
+ if(online)await evidence(card,'gradual-online');else assert.equal(await card.locator('.maplibregl-canvas').count(),0);
+ report.cards.push({name:online?'gradual-online-activation':'gradual-tiles-off-activation',positions});
+}
+async function bounded(){const n=await page.locator('.route-preview-card .maplibregl-canvas').count();report.max=Math.max(report.max,n);assert.ok(n<=6);}
+try{
+ await page.goto(url);await evidence(cards().nth(0),'classic-0');await evidence(cards().nth(1),'classic-1');await bounded();
+ const credit=cards().nth(0).locator('.preview-credit');for(const a of await credit.locator('a').all()){const href=await a.getAttribute('href'),pending=context.waitForEvent('page');const requested=context.waitForEvent('request',{predicate:r=>r.isNavigationRequest()&&r.url()===href,timeout:10000});await a.click();const popup=await pending;assert.equal((await requested).frame().page(),popup);await popup.close();assert.equal(await page.locator('.interactive-detail').count(),0);}
+ await credit.locator('summary').click();assert.ok(await credit.getByText(/可见卡片视口发送/).isVisible());await credit.locator('summary').click();
+ const reads=await page.evaluate(()=>window.__reads);await page.waitForTimeout(1700);assert.equal(await page.evaluate(()=>window.__reads),reads,'stable cards stop GPU reads');
+ const scroll=page.locator('.uni-scroll-view .uni-scroll-view').first();const top=await scroll.evaluate(e=>e.scrollTop);await cards().first().locator('.route-preview-picture').hover();await page.mouse.wheel(0,420);await page.waitForTimeout(500);assert.ok(await scroll.evaluate(e=>e.scrollTop)>top,'preview does not capture wheel scrolling');await cards().first().scrollIntoViewIfNeeded();await ready(cards().first());const touchTop=await scroll.evaluate(e=>e.scrollTop),picture=await cards().first().locator('.route-preview-picture').boundingBox(),cdp=await context.newCDPSession(page);await cdp.send('Input.synthesizeScrollGesture',{x:Math.round(picture.x+picture.width/2),y:Math.round(picture.y+picture.height/2),yDistance:-300,gestureSourceType:'touch'});await page.waitForTimeout(500);assert.ok(await scroll.evaluate(e=>e.scrollTop)>touchTop,'preview does not capture touch scrolling');assert.equal(await page.locator('.interactive-detail').count(),0);await cdp.detach();await cards().first().scrollIntoViewIfNeeded();await ready(cards().first());
+ await cards().nth(0).locator('.route-preview-open').focus();await page.keyboard.press('Enter');await page.locator('.interactive-detail').waitFor();assert.equal(await cards().count(),0);await page.locator('.map-back').click();await evidence(cards().nth(0),'returned-home');
+ await page.locator('.home-entries > *').filter({hasText:'线路'}).click();await evidence(cards().nth(0),'list-nonclassic');assert.ok(!(await cards().first().getAttribute('data-route-id')).startsWith('demo-'));await bounded();await gradual(cards().nth(3),true);
+ for(let i=1;i<9;i++){await cards().nth(i).scrollIntoViewIfNeeded();await ready(cards().nth(i));await bounded();}
+ assert.equal(await cards().first().locator('.maplibregl-canvas').count(),0,'offscreen card releases GL');
+ await page.locator('.tabs > *').filter({hasText:'全部'}).click();await cards().nth(35).scrollIntoViewIfNeeded();await ready(cards().nth(35));await bounded();await page.locator('.load-more').click();await cards().nth(45).scrollIntoViewIfNeeded();await ready(cards().nth(45));await bounded();assert.ok(report.requests.shards<25,'bounded shards, not full traversal');
+ await cards().nth(45).locator('.route-preview-open').click();await page.locator('.interactive-detail .maplibregl-canvas').waitFor();assert.equal(await cards().count(),0);await page.locator('.map-back').click();await page.locator('.topbar > *').first().click();
+ await page.locator('.home-mode > *').filter({hasText:'地图'}).click();await page.locator('.home-map-browser').waitFor();assert.equal(await cards().count(),0);await page.locator('.home-mode > *').filter({hasText:'列表'}).click();await ready(cards().first());
+ await page.setViewportSize({width:1100,height:900});await evidence(cards().nth(1),'desktop-classic');await bounded();
+ await page.locator('.bottom-tabs > *').filter({hasText:'我的'}).click();await page.getByLabel('设置',{exact:true}).click();await page.locator('uni-switch').first().click();await page.locator('.topbar > *').first().click();await page.locator('.bottom-tabs > *').filter({hasText:'首页'}).click();const before=report.requests.provider;await page.waitForTimeout(2500);assert.equal(await page.locator('.maplibregl-canvas').count(),0);assert.equal(report.requests.provider,before,'tiles off makes no provider requests');await page.setViewportSize({width:390,height:844});await page.locator('.home-entries > *').filter({hasText:'线路'}).click();await gradual(cards().nth(3),false);assert.equal(report.requests.provider,before,'gradual tiles-off scrolling never requests provider');
+ assert.deepEqual(report.errors,[]);report.reads=await page.evaluate(()=>window.__reads);report.pass=true;
+}catch(e){report.failure=String(e);await page.screenshot({path:`${out}/failure.png`}).catch(()=>{});process.exitCode=1;}finally{fs.writeFileSync(`${out}/report.json`,JSON.stringify(report,null,2));await browser.close();}
+console.log(JSON.stringify(report));

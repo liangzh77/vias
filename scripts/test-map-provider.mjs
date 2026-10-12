@@ -22,10 +22,10 @@ const ready=()=>page.waitForFunction(()=>document.querySelector('.map-credit')?.
 const failed=()=>page.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='failed',null,{timeout:28000});
 const shot=name=>page.screenshot({path:`${out}/${name}.png`});
 async function drag(from,to,steps=30){await page.mouse.move(from,140);await page.mouse.down();await page.mouse.move(to,140,{steps});await page.mouse.up();}
-async function back(){await page.locator('.map-back').click();assert.equal(await page.locator('.maplibregl-canvas').count(),0);}
+async function back(){await page.locator('.map-back').click();assert.equal(await page.locator('.interactive-detail .maplibregl-canvas').count(),0);assert.ok(await page.locator('.route-preview-card .maplibregl-canvas').count()<=6);}
 try{
  await page.goto(url);await page.locator('.classic-card').first().waitFor();
- assert.equal(await page.locator('.classic-card').count(),4);assert.equal(await page.locator('.maplibregl-canvas').count(),0);
+ assert.equal(await page.locator('.classic-card').count(),4);assert.ok(await page.locator('.route-preview-card .maplibregl-canvas').count()<=6);
  for(const i of [0,1]){
   await page.locator('.classic-card').nth(i).click();await ready();
   const s=await state();assert.equal(s.paths.length,2);assert.equal(s.paths[0],s.paths[1]);assert.notEqual(s.paths[0],'M0 0');assert.deepEqual(s.markers,['起','终']);assert.ok(s.evidence.features>0&&s.evidence.pixelColors>1);
@@ -35,6 +35,8 @@ try{
   assert.equal(await page.locator('.map-info-content').isVisible(),true);
   for(let j=0;j<3;j++){
    const link=page.locator('.map-credit a').nth(j),href=await link.getAttribute('href');
+    await link.scrollIntoViewIfNeeded();await link.click({trial:true});
+    await page.waitForFunction(el=>{const b=el.getBoundingClientRect();const hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return hit===el||el.contains(hit);},await link.elementHandle());
    const requestPromise=context.waitForEvent('request',{predicate:r=>r.isNavigationRequest()&&r.url()===href,timeout:10000});
    const popupPromise=context.waitForEvent('page');await link.click();const popup=await popupPromise;
    const request=await requestPromise;assert.equal(request.frame().page(),popup);report.links.push(request.url());await popup.close();
@@ -70,11 +72,11 @@ try{
  const c2=await browser.newContext(),p2=await c2.newPage();p2.on('pageerror',e=>report.errors.push(e.message));
  let releaseImport,seen;const importGate=new Promise(r=>releaseImport=r),importSeen=new Promise(r=>seen=r);
  await c2.route('**/components-vector-basemap.*.js',async route=>{seen();await importGate;await route.continue().catch(()=>{});});
- await p2.goto(url);await p2.locator('.classic-card').first().click();await Promise.race([importSeen,new Promise((_,rej)=>setTimeout(()=>rej(Error('missing import interception')),10000))]);await p2.locator('.map-back').click();releaseImport();await p2.waitForTimeout(1500);assert.equal(await p2.locator('.maplibregl-canvas').count(),0);await p2.locator('.classic-card').nth(1).click();await p2.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='ready',null,{timeout:45000});assert.equal(await p2.locator('.maplibregl-canvas').count(),1);await c2.close();
+ await p2.goto(url);await p2.locator('.classic-card').first().click();await Promise.race([importSeen,new Promise((_,rej)=>setTimeout(()=>rej(Error('missing import interception')),10000))]);await p2.locator('.map-back').click();releaseImport();await p2.waitForTimeout(1500);assert.equal(await p2.locator('.interactive-detail .maplibregl-canvas').count(),0);assert.ok(await p2.locator('.route-preview-card .maplibregl-canvas').count()<=6);await p2.locator('.classic-card').nth(1).click();await p2.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='ready',null,{timeout:45000});assert.equal(await p2.locator('.maplibregl-canvas').count(),1);await c2.close();
  // A single failed tile among successful requests must not poison later viewports.
  const c3=await browser.newContext({viewport:{width:390,height:844}}),p3=await c3.newPage();p3.on('pageerror',e=>report.errors.push(e.message));
  let aborted=false;
- await c3.route('**/*.pbf',async route=>{if(!aborted&&route.request().url().includes('/planet/')){aborted=true;await route.abort('failed');}else await route.continue();});
+ await c3.route('**/*.pbf',async route=>{if(!aborted&&await p3.locator('.interactive-detail').count()&&route.request().url().includes('/planet/')){aborted=true;await route.abort('failed');}else await route.continue();});
  await p3.goto(url);await p3.locator('.classic-card').first().click();
  await p3.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='failed',null,{timeout:28000});assert.ok(aborted,'one vector tile failed');
  report.partialFailure=await p3.evaluate(()=>document.querySelector('.maplibregl-canvas').dataset.renderEvidence);

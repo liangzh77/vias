@@ -287,6 +287,16 @@ export async function loadOverviewGeometry(ids:string[],signal:AbortSignal):Prom
  return results;
 }
 
+// Preview geometry uses the bounded existing eight-shard cache but never attaches
+// coordinates to the 14k index. Returned segments are owned only by visible cards.
+export async function loadCardGeometry(id:string,signal:AbortSignal):Promise<ReturnType<typeof unpackSegments>> {
+ await loadIndex();if(signal.aborted)throw Error('卡片已取消');
+ const position=positionById.get(id);if(position==null)throw Error('卡片路线不在目录中');
+ const shard=shardOf(map,position);
+ try{const data=await fetchShard(shard);if(signal.aborted)throw Error('卡片已取消');checkShard(shard,data);return unpackSegments(data[id.slice(4)]);}
+ catch(e){if(!signal.aborted)shards.delete(shard);throw e;}
+}
+
 // Attaches packed geometry to a route object. Split out from the fetch so the decode path
 // can be exercised directly against a committed shard.
 export function mergeGeometry(route: Route, packed: unknown): Route {

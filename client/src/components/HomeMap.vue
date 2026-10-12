@@ -1,14 +1,17 @@
 <template>
  <view class="home-map-browser">
-  <TrackMap :segments="[]" :tiles="tiles" overview :overlays="overlays" :clusters="groups" :selected="selected" @viewport="query" @select="select" />
+  <TrackMap v-if="active" :segments="[]" :tiles="tiles" overview :initial-viewport="savedViewport" :overlays="overlays" :clusters="groups" :selected="selected" @viewport="query" @select="select" />
   <view class="overview-status" role="status">{{ message }}<button v-if="error" @click="retry">重试范围查询</button></view>
+  <view class="overview-selection-stack">
   <view class="overview-cards"><button v-for="r in visibleRoutes" :key="r.id" :class="{chosen:selected===r.id}" @click="select(r.id)">{{ r.title }}</button></view>
-  <button v-if="selectedRoute" class="overview-selected" @click="$emit('open',selectedRoute)"><image :src="selectedRoute.cover"/><view><text>{{ selectedRoute.title }}</text><text>{{ selectedRoute.distance.toFixed(2) }} km · 打开详情 ›</text><text class="muted">几何小图无底图 · 未实走，不可导航</text></view></button>
+  <view v-if="selectedRoute" class="overview-selected"><RouteCard :route="selectedRoute" :tiles="tiles" :active="active" @open="$emit('open',$event)" /></view>
+  </view>
  </view>
 </template>
 <script setup lang="ts">
 import {ref,computed,watch,onBeforeUnmount} from 'vue';
 import TrackMap from './TrackMap.vue';
+import RouteCard from './RouteCard.vue';
 import {loadIndex,loadOverviewGeometry,osmRoutes,baseDir,catalogEntries,catalogShardCounts} from '../core/osm-catalog';
 import {validateSpatial,candidates,clusters,limitedRows,simplify,type SpatialRow,type Bounds} from '../core/spatial';
 import type {Route,Point} from '../core/track';
@@ -17,10 +20,11 @@ const selected=ref(''),message=ref('移动地图浏览路线'),error=ref(false);
 const overlays=ref<{id:string;segments:Point[][]}[]>([]),groups=ref<{lat:number;lon:number;count:number}[]>([]),visibleRoutes=ref<Route[]>([]);
 const selectedRoute=computed(()=>osmRoutes.value.find(r=>r.id===selected.value));
 let rows:SpatialRow[]|null=null,epoch=0,controller:AbortController|undefined;
+const savedViewport=ref<{center:[number,number];zoom:number}>();
 let last:{bounds:Bounds;zoom:number}|undefined;
 async function read(url:string,signal:AbortSignal){const r=await fetch(url,{signal});if(!r.ok)throw Error(`范围数据 HTTP ${r.status}`);return r.json();}
-async function query(v:{bounds:Bounds;zoom:number}){
- last=v;const token=++epoch;controller?.abort();if(!props.active)return;
+async function query(v:{bounds:Bounds;zoom:number;center?:[number,number]}){
+ last=v;savedViewport.value={center:v.center||[(v.bounds[0]+v.bounds[2])/2,(v.bounds[1]+v.bounds[3])/2],zoom:v.zoom};const token=++epoch;controller?.abort();if(!props.active)return;
  controller=new AbortController();const signal=controller.signal;error.value=false;message.value='范围查询中…';overlays.value=[];groups.value=[];visibleRoutes.value=[];
  try{
   await loadIndex();if(token!==epoch)return;
@@ -40,5 +44,5 @@ watch(()=>props.active,active=>{epoch++;controller?.abort();if(active&&last)quer
 onBeforeUnmount(()=>{epoch++;controller?.abort();rows=null;overlays.value=[];groups.value=[];});
 </script>
 <style>
-.home-map-browser{position:relative;height:100%;min-height:300px}.overview-status{position:absolute;top:8px;left:8px;right:8px;background:#fffffff0;padding:6px;font-size:12px;z-index:3;border-radius:8px}.overview-status button{font-size:12px}.overview-cards{position:absolute;bottom:128px;left:8px;right:8px;display:flex;gap:6px;overflow:auto;z-index:3}.overview-cards button{flex:none;font-size:12px;background:white;padding:0 10px;line-height:32px}.overview-cards button.chosen{background:#00865e;color:white}.overview-selected{position:absolute;bottom:44px;left:8px;right:8px;display:flex;align-items:center;background:white;text-align:left;padding:6px;z-index:3;border-radius:10px;font-size:12px;line-height:20px}.overview-selected image{width:70px;height:64px;margin-right:8px}.overview-selected text{display:block}
+.home-map-browser{position:relative;height:100%;min-height:300px}.overview-status{position:absolute;top:8px;left:8px;right:8px;background:#fffffff0;padding:6px;font-size:12px;z-index:3;border-radius:8px}.overview-status button{font-size:12px}.overview-selection-stack{position:absolute;bottom:44px;left:8px;right:8px;max-height:calc(100% - 110px);display:flex;flex-direction:column;gap:8px;z-index:3}.overview-cards{display:flex;gap:6px;overflow:auto;flex-shrink:0}.overview-cards button{flex:none;font-size:12px;background:white;padding:0 10px;line-height:32px}.overview-cards button.chosen{background:#00865e;color:white}.overview-selected{min-height:0;overflow:auto;display:flex;align-items:flex-start;background:white;text-align:left;padding:6px;border-radius:10px;font-size:12px;line-height:20px}.overview-selected .route-preview-card{margin:0;width:100%}.overview-selected .route-preview-picture{height:120px}.overview-selected image{width:70px;height:64px;margin-right:8px}.overview-selected text{display:block}
 </style>
