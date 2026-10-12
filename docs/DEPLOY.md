@@ -2,7 +2,17 @@
 
 当前公开版包含北京 OpenStreetMap 提取快照（14,430 条路线/命名路径片段）、数学合成轨迹、程序绘制的缩略图、原创插画和开源字体。**公网部署即公开完整数据集**，再分发必须遵守 ODbL 署名与许可。命名路径片段不是完整行程；海拔来自地形插值、非实测，轨迹未经实走验证，**不可用于导航**。账户、支付、组队与离线地图等未接入服务。收藏、备注和 GPX 导入保存在浏览器；导出在本机生成。GPS 需要 HTTPS 和主动授权，不应向站点上传私人轨迹。
 
-## 最新发布：20261011T154426Z（2026-10-11）
+## 最新发布：20261012T060140Z（2026-10-12）
+
+- 用户明确“提交、推送、部署”；发布功能提交 `a14b959`，只含首页交互路线地图/列表切换及详情三态可拖动面板。收起时390×844模拟移动视口地图占80.57%，返回保留首页视口/选择。**卡片真实底图截图缓存仍未实现**，许可待澄清；本次不包含它。
+- 真实 Sol6.1 medium 实施、Astra high 独立两轮验收，第二轮 `approve`；首轮展开/横屏说明裁切R1修复。报告 `artifacts/map-first/interactive/review-2/REVIEW.md`；49项客户端测试、11项公开构建/发布/config离线测试、sidecar测试、typecheck、H5/MP构建、目录校验及完整Chrome回归通过。手机完全未连接/操作，独立批准仅限桌面交互子阶段，不是法律或真机结论。
+- 发布包从干净 `git archive a14b959` 构建，复用本地依赖和完整目录。初次干净构建因没有旧manifest而生成新时间戳，数据核对发现仅原manifest变化；该包留作证据、未上传。以已核对SHA的原manifest作为 `stampGenerated` 输入重新构建，原14,526文件全部字节不变，仅新增 `spatial.json`、`spatial-manifest.json`（ODbL派生bbox，输入/输出哈希可追溯）。两个新增文件与独立验收哈希相同，14,430路线/94分片未变。
+- 最终包14,546文件 / 72,947,085 B，H5 JS 1,593,567 B；archive SHA-256 `dad53d43d68989379561e05c33160909cc6e1616f1b73e7d0f9d4f445c6e76c2`；扁平manifest SHA-256 `097aa7fafcde2d071f487bc68d85e9f4815d0e4db567557a99d0c64c157f72eb`。包/manifest/三份发布工具上传前后SHA一致。
+- 远端 detached `setsid nohup` 发布完整成功：`HTTP_OK files=14546 SHA-256 matches; metadata_404=14554`、`PUBLISH_OK`、`DEPLOY_SITE_OK`、`DEPLOY_EXIT=0`。`current=releases/20261012T060140Z`，旧 `20261011T154426Z` 和其 `.deploy-20261011T154426Z/manifest.json` 保留回退。当前清单在 `.deploy-20261012T060140Z/manifest.json`，不在公开树根。
+- 干净包localhost及正式URL均完整通过 `test-map-first.mjs`、未削弱的 `test-map-provider.mjs`：地图/面板/链接/许可/旋转/三种导出/失败恢复、0pageerrors、拖动readPixels9。正式URL是协调者桌面回归，不是新的独立审查。主站/Fleeting/HairPlay入口响应前后逐字节相同；Caddy站点与主配置SHA不变，无reload/服务重启。
+- 本轮发布证据：gitignored `artifacts/map-first/publish/`。回退用旧版自己的manifest与协调锁、`--mode switch`；不删除旧版、不恢复数据目录、不改Caddy。
+
+## 历史发布：20261011T154426Z（2026-10-11）
 
 - 功能提交 `618f6cf`：按用户要求，将 H5 地图右下角三行说明收起为 ⓘ；展开后保留来源链接、第三方请求披露及渲染库许可证下载。正常状态不再显示“已绘制”，失败时单独显示提示；修正无底图提示的条件。收起署名不代表已满足提供方署名要求，个人测试不自动豁免。
 - 类型检查、45 项单测、公开构建及更新后的完整地图行为回归通过；本地首轮链接 popup 等待超时保留在 `artifacts/compact-credit/browser.log`，修正条件后的完整重跑通过，正式 URL 同脚本也通过（拖动读回9次、失败/恢复、说明点击/键盘收起与链接/许可下载、errors=[]）。H5 JS 1,582,436 B。未做新的独立审查或真机验收，未连接手机。
@@ -29,7 +39,7 @@ python3 scripts/test_config_transaction.py
 
 `check-public-build.mjs` 校验 `scripts/public-assets.json` 的 SHA-256，动态编译文件必须与 Rollup 生成的独立 `.vias-h5-inventory.json` 文件集和哈希完全匹配，并只允许限定类型；该清单位于构建目录的父目录，不进入公开包。复制构建到其他路径打包时必须同步父目录清单，或用 `VIAS_BUILD_INVENTORY` 指定可信清单；字体即使在 `assets/` 也必须匹配批准字体哈希。未知文件、source map、元数据、软链接、私有标识或路径都会阻断打包。仅清理与已知本机研究源文件逐字节匹配的已知研究副本；未知研究文件也拒绝。失败产物保留用于调查，不能上传。
 
-目录数据（`static/osm/**`）不在 `public-assets.json` 里：14,430 张缩略图既无法人工审阅，也无法用小型白名单表达。它在两处被独立约束：`check-public-build.mjs` 从 **索引** 推导封面与分片集合、要求清单里的每个缩略图/分片哈希与磁盘一致、并校验清单与索引的来源/许可/计数互洽；`release.py pack` 则读回随数据一起发布的 `static/osm/manifest.json`，**只有清单声明且哈希相符的 `static/osm/*` 才能打包**，未声明、多余或清单里声明却未构建的文件都会失败。两份检查都不能用环境变量绕过；发布完整快照仍需要显式运行 `node scripts/prepare-catalog.mjs --full`。
+目录数据（`static/osm/**`）不在 `public-assets.json` 里：14,430 张缩略图既无法人工审阅，也无法用小型白名单表达。它在两处被独立约束：`check-public-build.mjs` 从 **索引** 推导封面与分片集合、要求清单里的每个缩略图/分片哈希与磁盘一致、并校验清单与索引的来源/许可/计数互洽；`release.py pack` 则读回随数据一起发布的 `static/osm/manifest.json`，**只有清单声明且哈希相符的 `static/osm/*` 才能打包**，未声明、多余或清单里声明却未构建的文件都会失败。新增空间索引使用独立 `spatial-manifest.json` 声明并绑定原index/分片SHA与派生输出 `spatial.json`，封闭白名单只补这两个指定文件，原manifest保持不变。两份检查都不能用环境变量绕过；发布完整快照仍需要显式运行 `node scripts/prepare-catalog.mjs --full`。
 
 推荐 `python3 scripts/export-public.py <全新导出目录>`，只导出 Git 跟踪与非 ignored 新文件（未提交修改也会导出），复用本机依赖后在导出目录构建。不要把私有目录、仓库、依赖或源码上传。
 
