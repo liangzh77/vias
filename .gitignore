@@ -2,6 +2,8 @@ node_modules/
 client/dist/
 tools/
 artifacts/
+.check-run/
+.check-run.lock
 data/
 *.log
 .DS_Store

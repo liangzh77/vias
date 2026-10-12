@@ -17,6 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {spatialSidecar} from './spatial-sidecar.mjs';
 import {fileURLToPath} from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -159,6 +160,10 @@ for (const file of fs.readdirSync(path.join(source, 'shards'))) {
   fs.copyFileSync(path.join(source, 'shards', file), path.join(staticDir, 'routes', file));
   shards += 1;
 }
+
+// Keep the original manifest, index, shards and art unchanged. Derived spatial metadata
+// has its own closed, hash-pinned provenance statement.
+spatialSidecar(staticDir,catalog);
 
 /* ---------- committed preview for the first paint ---------- */
 const featured = catalog.routes.filter(entry => entry.featured).slice(0, PREVIEW_LIMIT);

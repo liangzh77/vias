@@ -53,6 +53,14 @@ if(manifest.counts?.routes!==index.routes.length||manifest.counts?.shards!==inde
 if(manifest.counts.relations+manifest.counts.namedPaths!==index.routes.length)throw Error('Catalogue manifest route split does not add up');
 if(manifest.counts.points!==index.routes.reduce((n,r)=>n+(r.points||0),0))throw Error('Catalogue manifest point total disagrees with the index');
 if(manifest.index?.sha256!==hash(fs.readFileSync(indexPath)))throw Error('Catalogue manifest index hash does not match the shipped index');
+const spatialPaths=new Set(['static/osm/spatial.json','static/osm/spatial-manifest.json']);
+const spatialManifest=JSON.parse(fs.readFileSync(path.join(root,'client/src/static/osm/spatial-manifest.json'),'utf8'));
+const spatialBytes=fs.readFileSync(path.join(root,'client/src/static/osm/spatial.json'));
+const spatial=JSON.parse(spatialBytes);
+if(spatialManifest.version!==1||spatialManifest.algorithm!=='segment-bbox-v1'||spatialManifest.license!=='ODbL 1.0'||spatialManifest.attribution!=='© OpenStreetMap contributors'||spatialManifest.source!==index.source||spatialManifest.indexHash!==manifest.index.sha256||spatialManifest.output?.path!=='static/osm/spatial.json'||spatialManifest.output.sha256!==hash(spatialBytes)||spatial.indexHash!==manifest.index.sha256||spatial.version!==1||spatial.routesHash!==hash(Buffer.from(JSON.stringify(index.routes)))||spatial.rows.length!==index.routes.length||spatialManifest.routes!==index.routes.length)throw Error('Invalid spatial provenance');
+if(JSON.stringify(spatialManifest.inputs)!==JSON.stringify(manifest.shards.map(s=>({path:s.path,sha256:s.sha256}))))throw Error('Spatial inputs disagree');
+let spatialShard=0,spatialEnd=index.shards[0];
+spatial.rows.forEach((r,i)=>{while(i>=spatialEnd){spatialEnd+=index.shards[++spatialShard];}if(r.length!==6||r[0]!==index.routes[i].id||!r.slice(1).every(Number.isFinite)||r[1]<-90||r[3]>90||r[2]<-180||r[4]>180||r[1]>r[3]||r[2]>r[4]||r[5]!==spatialShard)throw Error('Invalid spatial row');});
 const manifestShards=new Map((manifest.shards||[]).map(s=>[s.path.split('/').pop(),s]));
 index.shards.forEach((count,i)=>{const name='shard-'+String(i).padStart(3,'0')+'.json';const entry=manifestShards.get(name);
  if(!entry||entry.routes!==count)throw Error('Catalogue manifest is missing shard counts for '+name);
@@ -86,9 +94,10 @@ for(const rel of files){
  if(b.subarray(0,4).equals(Buffer.from([0,5,22,7])))throw Error('AppleDouble payload');
  if(rel.startsWith('static/')){if(rel==='static/osm/index.json'){if(!b.equals(fs.readFileSync(indexPath)))throw Error('Shipped catalogue index differs from the installed one');}
   else if(rel==='static/osm/manifest.json'){if(!b.equals(fs.readFileSync(manifestPath)))throw Error('Shipped catalogue manifest differs from the installed one');}
+  else if(spatialPaths.has(rel)){if(!b.equals(fs.readFileSync(path.join(root,'client/src',rel))))throw Error('Shipped spatial metadata differs');}
   else if(!osmCovers.has(rel)&&!osmShards.has(rel)&&approved[rel]!==sha)throw Error('Unapproved static asset: '+rel);}
  else if(target==='mp-weixin'){
-  if(!/^(app\.(js|json|wxss)|project\.config\.json|common\/[\w.-]+\.js|core\/(track|shard-codec|osm-catalog|public-routes)\.js|pages\/index\/index\.(js|json|wxml|wxss)|components\/(Icon|TrackMap|ElevationChart)\.(js|json|wxml|wxss))$/.test(rel))throw Error('Unknown mini-program output: '+rel);
+  if(!/^(app\.(js|json|wxss)|project\.config\.json|common\/[\w.-]+\.js|core\/(track|shard-codec|osm-catalog|public-routes|spatial)\.js|pages\/index\/index\.(js|json|wxml|wxss)|components\/(Icon|TrackMap|ElevationChart|DetailSheet|HomeMap)\.(js|json|wxml|wxss))$/.test(rel))throw Error('Unknown mini-program output: '+rel);
  }else {
   if(rel!=='index.html'&&!/^assets\/[A-Za-z0-9_.-]+\.(js|css|svg|png|woff2)$/.test(rel))throw Error('Unknown file: '+rel);
   if(inventory[rel]!==sha)throw Error('File not in exact compiler inventory: '+rel);
@@ -132,7 +141,7 @@ const totalJs=files.filter(n=>/^assets\/.*\.js$/.test(n)).reduce((n,f)=>n+fs.sta
 if(target==='h5'&&totalJs>2*1024*1024)throw Error('First-screen JavaScript budget exceeded: '+totalJs+' bytes');
 for(const rel of osmCovers)if(!seen.has(rel))throw Error('Missing generated catalogue thumbnail: '+rel);
 for(const rel of osmShards)if(!seen.has(rel))throw Error('Missing generated geometry shard: '+rel);
-for(const rel of ['static/osm/index.json','static/osm/manifest.json'])if(!seen.has(rel))throw Error('Missing published catalogue file: '+rel);
+for(const rel of ['static/osm/index.json','static/osm/manifest.json',...spatialPaths])if(!seen.has(rel))throw Error('Missing published catalogue file: '+rel);
 for(const rel of [...Object.keys(approved),...Object.keys(inventory||{})])if(!seen.has(rel))throw Error('Missing asset: '+rel);
 for(const d of dirs)if(d!=='static/research'&&!files.some(f=>!f.startsWith('static/research/')&&f.startsWith(d+'/')))throw Error('Unknown empty directory: '+d);
 for(const rel of files.filter(n=>n.startsWith('static/research/')))fs.unlinkSync(path.join(dir,rel));

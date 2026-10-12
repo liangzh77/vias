@@ -171,6 +171,11 @@ function adopt(next: Catalog): void {
   osmCount.value = next.routes.length;
 }
 
+// Exact adopted network entries, used to bind independently fetched spatial metadata
+// to this in-memory index even across a release switch with unchanged route IDs.
+export function catalogEntries(): readonly Entry[] {return catalog?.routes ?? [];}
+export function catalogShardCounts(): number[] {return [...map.counts];}
+
 export function shardCount(): number {
   return map.counts.length;
 }
@@ -186,9 +191,9 @@ function baseUrl(): string {
   return env?.BASE_URL || '/';
 }
 
-async function readJson(url: string): Promise<unknown> {
+async function readJson(url: string, signal?:AbortSignal): Promise<unknown> {
   if (typeof fetch === 'function') {
-    const response = await fetch(url);
+    const response = await fetch(url,{signal});
     if (!response.ok) throw new Error(`请求失败（HTTP ${response.status}）`);
     return JSON.parse(await response.text());
   }
@@ -266,6 +271,20 @@ function checkShard(shard: number, data: Shard): void {
     const position = positionById.get(`osm-${key}`);
     if (position == null || shardOf(map, position) !== shard) throw new Error('轨迹分片与当前目录版本不一致（分片内容不符）');
   }
+}
+
+// Overview queries own abortable, bounded requests, never attach browsing geometry
+// to the global index or fill the detail shard cache. At most twelve routes/three
+// shards per query; stale viewport fetches are canceled by the caller.
+export async function loadOverviewGeometry(ids:string[],signal:AbortSignal):Promise<{id:string;segments:ReturnType<typeof unpackSegments>}[]> {
+ await loadIndex();if(signal.aborted)throw new Error('范围查询已取消');
+ if(ids.length>12||new Set(ids).size!==ids.length)throw new Error('范围路线数量超限');
+ const groups=new Map<number,string[]>();
+ for(const id of ids){const position=positionById.get(id);if(position==null)throw new Error('范围路线不在目录中');const shard=shardOf(map,position);const group=groups.get(shard)||[];group.push(id);groups.set(shard,group);}
+ if(groups.size>3)throw new Error('范围分片数量超限');
+ const results:{id:string;segments:ReturnType<typeof unpackSegments>}[]=[];
+ for(const [shard,group] of groups){if(signal.aborted)throw new Error('范围查询已取消');const data=await readJson(`${baseUrl()}static/osm/routes/${shardFileName(shard)}`,signal) as Shard;checkShard(shard,data);for(const id of group)results.push({id,segments:unpackSegments(data[id.slice(4)])});}
+ return results;
 }
 
 // Attaches packed geometry to a route object. Split out from the fetch so the decode path

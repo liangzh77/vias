@@ -107,6 +107,13 @@ class ReleaseSafetyTests(unittest.TestCase):
         for folder, dest in (('shards', install / 'routes'), ('thumbs', install)):
             for file in sorted((sample / folder).iterdir()):
                 shutil.copyfile(file, dest / file.name)
+        # Derive the exact same bbox-only sidecar from the sample's licensed geometry.
+        generator = (repo / 'scripts/spatial-sidecar.mjs').as_uri()
+        subprocess.run(['node', '--input-type=module', '-e',
+                        f"import {{spatialSidecar}} from {json.dumps(generator)};"
+                        "import fs from 'node:fs';"
+                        "const dir=process.argv[1];spatialSidecar(dir,JSON.parse(fs.readFileSync(dir+'/index.json')));",
+                        str(install)], check=True)
         build = self.root / 'repo/client/dist/build/h5'
         shutil.copytree(install, build / 'static/osm')
         approved = json.loads((repo / 'scripts/public-assets.json').read_text())

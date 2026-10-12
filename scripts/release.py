@@ -136,6 +136,23 @@ def catalogue_declaration(build):
         raise ValueError('Catalogue manifest shard route counts do not add up')
     if int(counts.get('relations', -1)) + int(counts.get('namedPaths', -1)) != counts.get('routes'):
         raise ValueError('Catalogue manifest route split does not add up')
+    spatial_path = Path(build) / (DERIVED_PREFIX + 'spatial-manifest.json')
+    if spatial_path.exists():
+        spatial_bytes = spatial_path.read_bytes()
+        spatial = json.loads(spatial_bytes)
+        output = spatial.get('output') or {}
+        inputs = [{'path': s['path'], 'sha256': s['sha256']} for s in shards]
+        if (spatial.get('version') != 1 or spatial.get('algorithm') != 'segment-bbox-v1'
+                or spatial.get('license') != 'ODbL 1.0'
+                or spatial.get('attribution') != '© OpenStreetMap contributors'
+                or spatial.get('source') != data.get('source')
+                or spatial.get('indexHash') != index['sha256']
+                or spatial.get('inputs') != inputs or spatial.get('routes') != counts['routes']
+                or output.get('path') != DERIVED_PREFIX + 'spatial.json'
+                or not SHA256.fullmatch(str(output.get('sha256', '')))):
+            raise ValueError('Invalid spatial declaration')
+        declared[DERIVED_PREFIX + 'spatial-manifest.json'] = digest(spatial_bytes)
+        declared[output['path']] = output['sha256']
     return declared
 
 

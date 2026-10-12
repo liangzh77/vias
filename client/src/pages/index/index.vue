@@ -6,7 +6,11 @@
    <button class="icon-button" :aria-label="page==='library'?'导入轨迹':page==='data'?'数据说明':'搜索'" @click="page==='library'?importFile():page==='data'?null:go('search')"><Icon v-if="page==='library'" name="upload" :size="22" /><Icon v-else-if="page!=='data'" name="search" :size="22" /></button>
   </view>
 
-  <scroll-view v-if="page==='home'" scroll-y class="page-scroll with-tabs">
+  <!-- #ifdef H5 -->
+  <view v-if="page==='home'" class="home-mode"><button :class="{active:homeMode==='list'}" @click="homeMode='list'">列表</button><button :class="{active:homeMode==='map'}" @click="homeMode='map'">地图</button></view>
+  <view v-if="homeMode==='map'&&(page==='home'||page==='detail')" :class="{'home-map-hidden':page!=='home'}" class="home-map-region"><HomeMap :tiles="tiles" :active="page==='home'" @open="openRoute" /></view>
+  <!-- #endif -->
+  <scroll-view v-if="page==='home'&&homeMode==='list'" scroll-y class="page-scroll with-tabs">
    <view class="home-head"><image class="brand" :src="asset('brand')" mode="aspectFit" /><button class="search-pill" @click="go('search')">搜索目的地/线路</button><button class="icon-button" aria-label="消息" @click="unavailable('消息','本地研究版没有连接六只脚账号或消息服务器。')"><Icon name="mail" :size="28" /></button></view>
    <!-- 公开版首屏不放任何占位插画：最上面是 4 条真实北京路线（真实几何缩略图），没有照片就留空。 -->
    <view v-if="research" class="hero-wrap"><image class="hero" :src="asset('banner')" mode="aspectFill" @click="unavailable('本地展示横幅','此横幅仅作为本地视觉研究素材，不提供租车或商业活动入口。')"/><text class="hero-caption">奔赴山野 自在出行</text></view>
@@ -55,9 +59,12 @@
   </scroll-view>
 
   <template v-if="page==='detail'">
-   <scroll-view scroll-y class="page-scroll detail-scroll">
+   <DetailSheet :key="current.id">
+    <template #map>
     <view class="detail-map"><TrackMap v-if="geometry==='ready'" :key="current.id" :segments="current.segments" :waypoints="current.waypoints" :tiles="tiles"/><view v-else class="map-pending"><text v-if="geometry==='loading'">轨迹数据按需加载中…</text><block v-else><text>{{ geometryError }}</text><button class="primary small" @click="retryGeometry">重试</button></block></view><button class="map-back floating" aria-label="返回" @click="back"><Icon name="back" :size="27"/></button><button class="map-more floating" aria-label="路线菜单" @click="sheet='routeMenu'"><Icon name="more" :size="28"/></button><button class="offline floating" @click="sheet='offline'"><Icon name="cloud" :size="25"/> 离线地图</button></view>
-    <view class="detail-panel"><view class="handle"></view><view class="detail-author"><view class="avatar">{{ current.author[0] }}</view><text class="author-name">{{ current.author }}</text><view class="route-meta"><text>{{routeOrigin(current)}}　{{ current.activity }}</text><text class="muted">#{{ current.id }}</text></view></view>
+    </template>
+    <template #summary>{{ current.title }} · {{ current.distance.toFixed(2) }} km</template>
+    <view class="detail-panel"><view class="detail-author"><view class="avatar">{{ current.author[0] }}</view><text class="author-name">{{ current.author }}</text><view class="route-meta"><text>{{routeOrigin(current)}}　{{ current.activity }}</text><text class="muted">#{{ current.id }}</text></view></view>
      <view class="detail-info"><Icon name="clock" :size="21"/><text>{{ routeDates }}</text></view><view v-if="current.waypoints.length" class="detail-info"><Icon name="pin" :size="21"/><text>文件含 {{ current.waypoints.length }} 个标注点</text></view><view class="detail-info"><Icon name="pin" :size="21"/><text>{{ current.place }}</text></view>
      <text class="detail-title">{{ current.title }}</text><view class="distance-value"><text>{{ current.distance.toFixed(2) }}</text><text>里程(公里)</text></view><view class="difficulty">难度： <text>{{ current.difficulty==='难'?'☹':'☺' }} {{ current.difficulty }}</text></view>
      <view class="stats-grid"><view v-for="stat in currentStats" :key="stat[1]"><text>{{ stat[0] }}</text><text>{{ stat[1] }}</text></view></view>
@@ -65,8 +72,8 @@
      <ElevationChart v-if="geometry==='ready'" :segments="current.segments"/><view v-else class="elevation-chart pending"><text>{{ geometry==='loading'?'海拔剖面随轨迹一起按需加载…':'海拔剖面暂不可用' }}</text></view>
      <view class="source-card"><text>{{ current.source }}</text><text>作者：{{ current.author }} · {{ pointCountOf(current) }} 个轨迹点</text><text selectable>{{ current.sourceUrl || '数据仅保存在本设备浏览器' }}</text><text v-if="current.licenseUrl" selectable>许可：{{ current.license }} — {{ current.licenseUrl }}</text><text>导出 GPX/KML 文件会一并写入作者、来源与许可信息。轨迹仅供研究参考，不代表道路可通行。出发前请自行核实。</text></view>
     </view>
-   </scroll-view>
-   <view class="detail-actions"><button @click="toggleFavorite(current.id)"><Icon name="star" :color="favorites.includes(current.id)?'#00bd7b':'#333'"/><text>{{ favorites.includes(current.id)?'已收藏':'收藏' }}</text></button><button @click="sheet='notes'"><Icon name="comment"/><text>备注</text></button><button @click="followRoute"><Icon name="pin"/><text>循迹</text></button><button @click="sheet='export'"><Icon name="share"/><text>导出</text></button><button class="navigate" @click="followRoute">导航</button></view>
+    <template #actions><view class="detail-actions"><button @click="toggleFavorite(current.id)"><Icon name="star" :color="favorites.includes(current.id)?'#00bd7b':'#333'"/><text>{{ favorites.includes(current.id)?'已收藏':'收藏' }}</text></button><button @click="sheet='notes'"><Icon name="comment"/><text>备注</text></button><button @click="followRoute"><Icon name="pin"/><text>循迹</text></button><button @click="sheet='export'"><Icon name="share"/><text>导出</text></button><button class="navigate" @click="followRoute">导航</button></view></template>
+   </DetailSheet>
   </template>
 
   <view v-if="page==='record'||page==='plan'" class="record-view">
@@ -121,6 +128,10 @@
 </template>
 <script setup lang="ts">
 import {ref,computed,watch,onMounted,onBeforeUnmount,type Ref} from 'vue';
+// #ifdef H5
+import HomeMap from '../../components/HomeMap.vue';
+// #endif
+import DetailSheet from '../../components/DetailSheet.vue';
 import ElevationChart from '../../components/ElevationChart.vue';import TrackMap from '../../components/TrackMap.vue';import Icon from '../../components/Icon.vue';
 import rawRoutes from 'virtual:vias-catalog';
 import classicList from '../../core/classic-routes.json';
@@ -143,6 +154,7 @@ function saveStore(key:string,value:unknown){try{uni.setStorageSync('vias:'+key,
 const localRoutes=ref<Route[]>(readStore('routes',[])),favorites=ref<string[]>(readStore('favorites',[])),history=ref<string[]>(readStore('history',[])),notes=ref<Record<string,string>>(readStore('notes',{})),groups=ref<string[]>(readStore('groups',[]));
 const geometry=ref<Geometry>('ready');const geometryError=ref('');
 const PAGE=40;
+const homeMode=ref('list');
 // Route coordinates are fetched from shards on demand; until then only the index metadata
 // (distance, climb, start point, point count) is available.
 type Geometry='ready'|'loading'|'error';
@@ -175,14 +187,16 @@ uni.setClipboardData({data:url,success:()=>toast('链接已复制，请在浏览
 function copyText(t:string){uni.setClipboardData({data:t,success:()=>toast('已复制'),fail:()=>toast('复制失败')});}
 function back(){sheet.value='';page.value=stack.pop()||'home';}
 function tab(p:Page){stack.length=0;page.value=p;}
-function openRoute(r:Route){current.value=r;const next=[r.id,...history.value.filter(id=>id!==r.id)].slice(0,100);if(saveStore('history',next))history.value=next;go('detail');ensureGeometry(current.value);}
+function openRoute(r:Route){geometryEpoch++;current.value=r;const next=[r.id,...history.value.filter(id=>id!==r.id)].slice(0,100);if(saveStore('history',next))history.value=next;go('detail');ensureGeometry(current.value);}
 // Loading is idempotent and shared: the shard request is deduplicated per shard, so the
 // same route is never fetched twice and neighbouring routes often reuse one download.
+let geometryEpoch=0;
 async function ensureGeometry(route:Route){
+ const token=++geometryEpoch;
  if(isGeometryLoaded(route)){geometry.value='ready';return true;}
  geometry.value='loading';geometryError.value='';
- try{await loadGeometry(route);geometry.value='ready';return true;}
- catch(error){geometry.value='error';geometryError.value=error instanceof Error?error.message:'轨迹数据加载失败';return false;}
+ try{await loadGeometry(route);if(token!==geometryEpoch||current.value.id!==route.id)return false;geometry.value='ready';return true;}
+ catch(error){if(token!==geometryEpoch||current.value.id!==route.id)return false;geometry.value='error';geometryError.value=error instanceof Error?error.message:'轨迹数据加载失败';return false;}
 }
 function retryGeometry(){ensureGeometry(current.value);}
 // The catalogue index is shared by every list; retrying it is safe and idempotent.

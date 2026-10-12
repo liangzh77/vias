@@ -5,11 +5,12 @@ ROOT=Path(__file__).resolve().parents[1]
 BUILD=Path(os.environ.get('PUBLIC_TEST_BUILD',ROOT/'client/dist/build/h5'))
 class CheckerTests(unittest.TestCase):
  def test_positive_and_negative(self):
-  for bad in [None,'unknown.txt','assets/app.js.map','assets/unknown.js','static/demo/unknown.png','assets/unknown.woff2','._index.html','__MACOSX/bad','static/demo/brand.png','symlink','private.js','root.js','emptydir','static/research/unknown.jpg']:
+  for bad in [None,'unknown.txt','assets/app.js.map','assets/unknown.js','static/demo/unknown.png','assets/unknown.woff2','._index.html','__MACOSX/bad','static/demo/brand.png','symlink','private.js','root.js','emptydir','static/research/unknown.jpg','static/osm/spatial.json','static/osm/spatial-manifest.json','static/osm/spatial-extra.json','missing-spatial']:
    with self.subTest(bad=bad), tempfile.TemporaryDirectory() as d:
     dest=Path(d)/'h5';shutil.copytree(BUILD,dest)
     shutil.copyfile(BUILD.parent/'.vias-h5-inventory.json',Path(d)/'.vias-h5-inventory.json')
-    if bad=='symlink': (dest/'assets/link.js').symlink_to('../index.html')
+    if bad=='missing-spatial': (dest/'static/osm/spatial.json').unlink()
+    elif bad=='symlink': (dest/'assets/link.js').symlink_to('../index.html')
     elif bad=='emptydir': (dest/'emptydir').mkdir()
     elif bad:
      name={'private.js':'assets/private.js','root.js':'assets/root.js'}.get(bad,bad)

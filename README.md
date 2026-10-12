@@ -21,7 +21,7 @@ npm run dev:h5
 
 ```sh
 npm run typecheck
-npm test                    # 45 个测试（轨迹领域 + 目录/分片 + 分段/导出 + 地图提供方），无私有数据依赖
+npm test                    # 轨迹/目录/空间查询/分段/导出/地图提供方，无私有数据依赖
 npm run build:h5
 npm run build:mp-weixin
 npm run verify:catalog      # 逐条校验本地目录：分片、点数、起点、里程、缩略图
@@ -53,6 +53,15 @@ npx playwright install chromium
 npm run test:browser
 # 也可以通过 PLAYWRIGHT_CHROMIUM_EXECUTABLE 指定已有 Chromium/Chrome
 ```
+
+## 本地地图优先交互子阶段（未发布，待独立验收）
+
+- H5 首页保留经典列表，新增“地图”切换：全目录 bbox 候选聚合；放大后每次范围查询最多 12 条路线、3 个几何分片，轨迹可点选高亮、联动卡片、打开详情并返回原视口/选择。过期查询取消；范围数据失败有明确错误和重试。bbox 候选不等同于精确道路相交，界面据实标为候选。
+- 详情三态面板可拖把手、按钮与键盘控制；地图真实随面板调整大小，不重建实例。390×844 模拟移动视口收起后地图约占 81%，保留滚动、高程、分段和三种导出。展开/横屏保留至少 120px 地图区供控件与完整署名；ⓘ 说明按可用视口定位，短地图时放在地图下方，不裁切来源链接、第三方请求披露或许可下载。本地三态/旋转回归通过，返工仍待独立验收，不代表线上已更新。
+- `prepare-catalog.mjs` 从已有 ODbL 分片离线派生 `spatial.json` + `spatial-manifest.json`；原 index / 94 分片 / 14,430 几何小图及原 manifest 不改。新 sidecar 单独记录来源、输入与输出 SHA-256；构建/打包封闭白名单仅增加这两个指定文件，Git 不含全量 sidecar。没有底图批量采集、截图缓存或后台队列。
+- **真实底图卡片截图持久缓存尚未实施**：提供方自动收集条款的许可待澄清。卡片仍显示明确标注的几何小图，不把此次两个交互目标说成全部三项目标完成。
+- 本地桌面 Chrome + 390×844/横屏自动回归：`scripts/test-map-first.mjs`；crossing、慢索引、取消/过期响应和空间目录版本错配：`scripts/test-map-first-fixtures.mjs`。原 `scripts/test-map-provider.mjs` 的真实第三方绘制、失败恢复和 GPU 读取预算断言保留。运行日志/截图在 gitignored `artifacts/map-first/interactive/`。
+- 当前线上仍是上文 `20261011T154426Z` / `42df439`；没有提交、推送或部署本地 UI。此处不是 Astra approve。手机完全未操作，真机/微信平台仍留待后续人工验证；中国公开地图审图与服务要求未核实。
 
 ## 功能与边界
 

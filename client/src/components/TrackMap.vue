@@ -1,5 +1,5 @@
 <template>
- <view class="map-shell">
+ <view class="map-shell" :data-viewport="viewportText">
   <!-- #ifdef H5 -->
   <div ref="host" class="map-canvas" aria-label="路线交互地图"></div>
   <!-- #endif -->
@@ -10,13 +10,14 @@
   <div v-if="tiles" class="map-credit compact" :data-basemap="baseState">
    <details class="map-info">
     <summary aria-label="地图说明" title="地图说明">ⓘ</summary>
-    <div class="map-info-content">
+    <div class="map-info-content" :style="{top:infoTop}">
      <div><a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> Data from <a :href="COPYRIGHT_URL" target="_blank" rel="noopener">OpenStreetMap</a></div>
      <div>当前视口请求发送至第三方 OpenFreeMap（可能经 Cloudflare）</div>
      <a class="renderer-license" href="#renderer-licenses" @click.prevent="showRendererLicenses">渲染库许可</a>
     </div>
    </details>
   </div>
+  <div v-if="tiles" class="map-attribution"><a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> · <a :href="COPYRIGHT_URL" target="_blank" rel="noopener">© OpenStreetMap</a></div>
   <div v-if="tiles&&baseState==='failed'" class="map-failure" role="status">底图加载失败，轨迹仍可查看</div>
   <view v-if="!tiles" class="map-credit">仅轨迹视图 · 无地形底图</view>
   <!-- #endif -->
@@ -32,7 +33,7 @@ import type {Point} from '../core/track';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 // #endif
-const props=withDefaults(defineProps<{segments:Point[][];waypoints?:Point[];tiles?:boolean;editable?:boolean;position?:Point|null}>(),{tiles:true,editable:false});
+const props=withDefaults(defineProps<{segments:Point[][];waypoints?:Point[];tiles?:boolean;editable?:boolean;position?:Point|null;overview?:boolean;overlays?:{id:string;segments:Point[][]}[];clusters?:{lat:number;lon:number;count:number}[];selected?:string}>(),{tiles:true,editable:false});
 // #ifdef H5
 // Leaflet 1.9.4 deletes _mapPane in Map.remove() but never clears _animatingZoom (Map.stop()
 // only cancels the fly-to frame and the pan animation). A transitionend still queued on the
@@ -46,7 +47,8 @@ const props=withDefaults(defineProps<{segments:Point[][];waypoints?:Point[];tile
 }
 // #endif
 
-const emit=defineEmits<{(e:'point',p:Point):void}>();
+const emit=defineEmits<{(e:'point',p:Point):void;(e:'viewport',v:{bounds:[number,number,number,number];zoom:number}):void;(e:'select',id:string):void}>();
+const viewportText=ref('');const infoTop=ref('64px');
 const COPYRIGHT_URL='https://www.openstreetmap.org/copyright';
 const credit=computed(()=>props.tiles?(tileError.value?'© OpenStreetMap contributors · 底图加载失败，轨迹仍可查看':'© OpenStreetMap contributors'):'仅轨迹视图 · 无地形底图');
 function openCopyright(){
@@ -60,7 +62,17 @@ const nativeLines=computed(()=>props.segments.map(s=>({points:s.map(p=>({latitud
 function nativeTap(e:any){if(props.editable&&e.detail?.latitude)emit('point',{lat:e.detail.latitude,lon:e.detail.longitude});}
 // #ifdef H5
 let map:L.Map|undefined, lines:L.LayerGroup|undefined, base:L.Layer|undefined, dot:L.CircleMarker|undefined, observer:ResizeObserver|undefined;
-let unmounted=false;
+let overviewLines:L.LayerGroup|undefined;
+let unmounted=false,infoDetails:HTMLDetailsElement|undefined;
+// Fixed positioning escapes the sheet's clipped map area. In short maps put
+// disclosure below the map, leaving its attribution and controls uncovered.
+function positionInfo(){
+ const shell=host.value?.parentElement,content=shell?.querySelector<HTMLElement>('.map-info[open] .map-info-content');
+ if(!shell||!content)return;
+ const b=shell.getBoundingClientRect(),h=content.getBoundingClientRect().height;
+ const desired=b.height>=h+76?b.top+54:b.bottom+8;
+ infoTop.value=Math.max(20,Math.min(desired,window.innerHeight-h-20))+'px';
+}
 const licenseUrls=new Map<string,ReturnType<typeof setTimeout>>();
 async function showRendererLicenses(){
  const {rendererLicenses}=await import('./vector-basemap');
@@ -204,14 +216,22 @@ async function setTiles(){
   schedule();
  }catch{fail();}
 }
+function overviewDraw(){
+ if(!map||!overviewLines)return;overviewLines.clearLayers();
+ for(const r of props.overlays||[])for(const seg of r.segments){if(seg.length<2)continue;L.polyline(seg.map(p=>[p.lat,p.lon] as L.LatLngTuple),{color:r.id===props.selected?'#f45b34':'#009d6b',weight:r.id===props.selected?7:4}).on('click',e=>{L.DomEvent.stopPropagation(e);emit('select',r.id);}).addTo(overviewLines);}
+ for(const c of props.clusters||[])L.marker([c.lat,c.lon],{icon:L.divIcon({className:'overview-cluster',html:`<button aria-label="放大路线聚合 ${c.count}">${c.count}</button>`,iconSize:[38,38]})}).on('click',()=>map?.setView([c.lat,c.lon],map.getZoom()+2)).addTo(overviewLines);
+}
+function viewport(){if(!map)return;const b=map.getBounds();const v={bounds:[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()] as [number,number,number,number],zoom:map.getZoom()};viewportText.value=JSON.stringify({...v,center:[map.getCenter().lat,map.getCenter().lng]});emit('viewport',v);}
 function updatePosition(){if(!map)return;if(dot)map.removeLayer(dot);if(props.position)dot=L.circleMarker([props.position.lat,props.position.lon],{color:'#fff',weight:3,fillColor:'#248dff',fillOpacity:1,radius:8}).addTo(map);}
-onMounted(async()=>{await nextTick();if(!host.value)return;map=L.map(host.value,{zoomControl:false,attributionControl:false,fadeAnimation:false}).setView([center.value.lat,center.value.lon],12);lines=L.layerGroup().addTo(map);setTiles();draw();map.on('click',e=>{if(props.editable)emit('point',{lat:e.latlng.lat,lon:e.latlng.lng});});observer=new ResizeObserver(()=>map?.invalidateSize());observer.observe(host.value);updatePosition();});
-watch(()=>props.segments,()=>draw(!props.editable),{deep:true});watch(()=>props.waypoints,()=>draw(false),{deep:true});watch(()=>props.tiles,setTiles);watch(()=>props.position,updatePosition,{deep:true});
+onMounted(async()=>{await nextTick();if(!host.value)return;infoDetails=host.value.parentElement?.querySelector<HTMLDetailsElement>('.map-info')||undefined;infoDetails?.addEventListener('toggle',positionInfo);map=L.map(host.value,{zoomControl:false,attributionControl:false,fadeAnimation:false}).setView([center.value.lat,center.value.lon],12);lines=L.layerGroup().addTo(map);overviewLines=L.layerGroup().addTo(map);if(props.overview)map.setView([40.03,116.2],9);setTiles();draw();overviewDraw();map.on('moveend',viewport);viewport();map.on('click',e=>{if(props.editable)emit('point',{lat:e.latlng.lat,lon:e.latlng.lng});});observer=new ResizeObserver(()=>{map?.invalidateSize();positionInfo();});observer.observe(host.value);updatePosition();});
+watch([()=>props.overlays,()=>props.clusters,()=>props.selected],overviewDraw,{deep:true});
+watch(()=>props.tiles,async()=>{infoDetails?.removeEventListener('toggle',positionInfo);await nextTick();if(unmounted)return;infoDetails=host.value?.parentElement?.querySelector<HTMLDetailsElement>('.map-info')||undefined;infoDetails?.addEventListener('toggle',positionInfo);});
+watch(()=>props.segments,()=>draw(!props.editable&&!props.overview),{deep:true});watch(()=>props.waypoints,()=>draw(false),{deep:true});watch(()=>props.tiles,setTiles);watch(()=>props.position,updatePosition,{deep:true});
 // A zoom transition that is still animating when the container goes away leaves Leaflet's
 // internal pane position undefined, and its transition end handler then throws
 // "Cannot read properties of undefined (reading '_leaflet_pos')" while switching routes.
 // stop() cancels in-flight animations/transitions before the map is torn down.
-onBeforeUnmount(()=>{unmounted=true;for(const [url,timer] of licenseUrls){clearTimeout(timer);URL.revokeObjectURL(url);}licenseUrls.clear();clearBase();observer?.disconnect();if(map){try{map.stop();(map as unknown as {_animatingZoom?:boolean})._animatingZoom=false;map.off();}catch{}map.remove();}});
+onBeforeUnmount(()=>{unmounted=true;infoDetails?.removeEventListener('toggle',positionInfo);for(const [url,timer] of licenseUrls){clearTimeout(timer);URL.revokeObjectURL(url);}licenseUrls.clear();clearBase();observer?.disconnect();if(map){try{map.stop();(map as unknown as {_animatingZoom?:boolean})._animatingZoom=false;map.off();}catch{}map.remove();}});
 // #endif
 function fit(){
 // #ifdef H5
@@ -232,7 +252,8 @@ defineExpose({fit,zoom,locate});
 </script>
 <style>
 .map-shell{height:100%;width:100%;position:relative;background:#e0e5dc}.map-canvas{height:100%;width:100%;z-index:0;background-color:#dce2d5;background-image:repeating-radial-gradient(ellipse at 25% 50%,transparent 0px,transparent 32px,#c9d4c844 33px,#c9d4c844 34px)}.map-credit{position:absolute;bottom:22px;right:5px;padding:2px 4px;background:#ffffffd9;font-size:9px;color:#555;z-index:2;pointer-events:none}
-.map-credit.compact{padding:0;background:transparent;pointer-events:auto;font-size:12px}.map-info{position:relative}.map-info>summary{list-style:none;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fffffff0;color:#365b60;font-size:20px}.map-info>summary::-webkit-details-marker{display:none}.map-info>summary:focus-visible{outline:2px solid #365b60;outline-offset:2px}.map-info-content{position:absolute;bottom:38px;right:0;width:260px;max-width:calc(100vw - 40px);padding:12px;background:#fffffff5;border-radius:8px;box-shadow:0 2px 12px #0002;line-height:1.6}.map-info-content>div{margin-bottom:8px}.map-failure{position:absolute;top:54px;left:10px;right:10px;text-align:center;padding:5px 8px;background:#ffffffe6;border-radius:6px;color:#765127;font-size:12px;z-index:2;pointer-events:none}
+.map-credit.compact{padding:0;background:transparent;pointer-events:auto;font-size:12px;z-index:4}.map-info{position:relative}.map-info>summary{list-style:none;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fffffff0;color:#365b60;font-size:20px}.map-info>summary::-webkit-details-marker{display:none}.map-info>summary:focus-visible{outline:2px solid #365b60;outline-offset:2px}.map-info-content{position:fixed;top:64px;bottom:auto;right:max(20px,calc((100vw - 430px)/2 + 20px));z-index:20;box-sizing:border-box;width:284px;max-width:calc(100vw - 40px);max-height:calc(100dvh - 84px);overflow:auto;padding:12px;background:#fffffff5;border-radius:8px;box-shadow:0 2px 12px #0002;line-height:1.6}.map-info-content>div{margin-bottom:8px}.map-failure{position:absolute;top:54px;left:10px;right:10px;text-align:center;padding:5px 8px;background:#ffffffe6;border-radius:6px;color:#765127;font-size:12px;z-index:2;pointer-events:none}
+.map-attribution{position:absolute;bottom:2px;right:5px;z-index:2;background:#ffffffe8;padding:2px 4px;font-size:10px;line-height:14px}.map-attribution a{color:#365b60;text-decoration:underline}.overview-cluster button{background:#00865e;color:white;border:2px solid white;border-radius:50%;width:38px;height:38px;padding:0;font-size:12px;box-shadow:0 2px 5px #0003}
 .map-credit.linkable{pointer-events:auto;max-width:calc(100% - 10px);line-height:1.5}.map-credit a{color:#365b60;text-decoration:underline}.renderer-license{all:unset;position:relative;display:inline-block;color:#365b60;text-decoration:underline;cursor:pointer}.renderer-license::after{display:none;pointer-events:none}.renderer-license:focus-visible{outline:2px solid #365b60;outline-offset:2px}.leaflet-gl-layer{pointer-events:none}
 a.map-credit{display:block}:deep(.track-marker-label){display:block;width:24px;height:24px;line-height:24px;text-align:center;color:white;border:2px solid white;border-radius:50%;font-size:12px;box-shadow:0 1px 4px #3335}.leaflet-container{font-family:inherit}:deep(.leaflet-tile){mix-blend-mode:normal}
 </style>
