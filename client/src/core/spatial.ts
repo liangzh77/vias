@@ -17,8 +17,36 @@ export function clusters(rows:SpatialRow[],bounds:Bounds){
  return [...groups.values()].map(g=>({lat:g.lat/g.count,lon:g.lon/g.count,count:g.count}));
 }
 export function limitedRows(rows:SpatialRow[],bounds:Bounds){
- const lat=(bounds[0]+bounds[2])/2,lon=(bounds[1]+bounds[3])/2;
- const sorted=[...rows].sort((a,b)=>Math.hypot((a[1]+a[3])/2-lat,(a[2]+a[4])/2-lon)-Math.hypot((b[1]+b[3])/2-lat,(b[2]+b[4])/2-lon));
- const shards=new Set<number>();return sorted.filter(r=>{if(!shards.has(r[5])&&shards.size>=3)return false;shards.add(r[5]);return true;}).slice(0,12);
+ return candidates(rows,bounds).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,100);
 }
-export function simplify(segments:Point[][]){return segments.map(s=>{const stride=Math.max(1,Math.ceil(s.length/128));return s.filter((_,i)=>i%stride===0||i===s.length-1);});}
+// Generic overview only: <=256 separate segments, <=512 points; never join segment gaps.
+// Home overview must first clip to its viewport (below); cards/details keep originals.
+export function simplify(segments:Point[][]){const kept=segments.filter(s=>s.length>=2).slice(0,256);const budget=Math.min(128,Math.max(2,Math.floor(512/Math.max(1,kept.length))));return kept.map(s=>{if(s.length<=budget)return s;return Array.from({length:budget},(_,i)=>s[Math.round(i*(s.length-1)/(budget-1))]);});}
+// Clip original line edges before assigning the overview budget. Every retained point
+// lies in the convex viewport, so sampling cannot discard the entire visible excursion.
+// Exit/re-entry and original segment boundaries remain separate (no fabricated bridges).
+export function simplifyVisible(segments:Point[][],b:Bounds):Point[][]{
+ const same=(a:Point,c:Point)=>Math.abs(a.lat-c.lat)<1e-12&&Math.abs(a.lon-c.lon)<1e-12;
+ const length=(s:Point[])=>s.reduce((n,p,i)=>i?n+Math.hypot(p.lat-s[i-1].lat,p.lon-s[i-1].lon):n,0);
+ let kept:{points:Point[];length:number;order:number}[]=[];let order=0;
+ const retain=(points:Point[])=>{if(points.length<2)return;kept.push({points,length:length(points),order:order++});if(kept.length>256){kept.sort((a,c)=>c.length-a.length||a.order-c.order);kept.length=256;}};
+ for(const s of segments){let chain:Point[]=[];
+  for(let i=1;i<s.length;i++){
+   const a=s[i-1],c=s[i],dx=c.lon-a.lon,dy=c.lat-a.lat;let lo=0,hi=1;
+   const ps=[-dx,dx,-dy,dy],qs=[a.lon-b[1],b[3]-a.lon,a.lat-b[0],b[2]-a.lat];let hit=true;
+   for(let k=0;k<4;k++){if(ps[k]===0){if(qs[k]<0){hit=false;break;}}else{const t=qs[k]/ps[k];if(ps[k]<0)lo=Math.max(lo,t);else hi=Math.min(hi,t);if(lo>hi){hit=false;break;}}}
+   if(!hit){retain(chain);chain=[];continue;}
+   const at=(t:number):Point=>({...a,lat:Math.max(b[0],Math.min(b[2],a.lat+t*dy)),lon:Math.max(b[1],Math.min(b[3],a.lon+t*dx))});
+   const start=at(lo),end=at(hi);
+   if(chain.length&&!same(chain[chain.length-1],start)){retain(chain);chain=[];}
+   if(!chain.length)chain.push(start);chain.push(end);
+   if(hi<1){retain(chain);chain=[];}
+  }
+  retain(chain);
+ }
+ // If fragmented beyond budget, retain the longest visible pieces, with stable ties.
+ // For closed visible loops preserve an interior point: two equal endpoints vanish.
+ kept.sort((a,c)=>a.order-c.order);
+ const budget=Math.min(128,Math.max(2,Math.floor(512/Math.max(1,kept.length))));
+ return kept.map(({points:s})=>{if(s.length<=budget)return s;const out=Array.from({length:budget},(_,i)=>s[Math.round(i*(s.length-1)/(budget-1))]);if(out.every(p=>same(p,out[0]))){const far=s.reduce((best,p)=>Math.hypot(p.lat-s[0].lat,p.lon-s[0].lon)>Math.hypot(best.lat-s[0].lat,best.lon-s[0].lon)?p:best,s[0]);out[Math.floor(budget/2)]=far;}return out;});
+}

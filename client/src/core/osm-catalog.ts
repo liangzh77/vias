@@ -274,16 +274,18 @@ function checkShard(shard: number, data: Shard): void {
 }
 
 // Overview queries own abortable, bounded requests, never attach browsing geometry
-// to the global index or fill the detail shard cache. At most twelve routes/three
-// shards per query; stale viewport fetches are canceled by the caller.
+// to the global index or fill the detail shard cache. Three concurrent requests,
+// eight cached shards; neither bound limits candidate eligibility.
+const overviewCaches=new WeakMap<AbortSignal,Map<number,Shard>>();
 export async function loadOverviewGeometry(ids:string[],signal:AbortSignal):Promise<{id:string;segments:ReturnType<typeof unpackSegments>}[]> {
  await loadIndex();if(signal.aborted)throw new Error('范围查询已取消');
- if(ids.length>12||new Set(ids).size!==ids.length)throw new Error('范围路线数量超限');
+ let overviewCache=overviewCaches.get(signal);if(!overviewCache){overviewCache=new Map<number,Shard>();overviewCaches.set(signal,overviewCache);}const cache=overviewCache;
+ if(new Set(ids).size!==ids.length)throw new Error('范围路线 ID 重复');
  const groups=new Map<number,string[]>();
  for(const id of ids){const position=positionById.get(id);if(position==null)throw new Error('范围路线不在目录中');const shard=shardOf(map,position);const group=groups.get(shard)||[];group.push(id);groups.set(shard,group);}
- if(groups.size>3)throw new Error('范围分片数量超限');
  const results:{id:string;segments:ReturnType<typeof unpackSegments>}[]=[];
- for(const [shard,group] of groups){if(signal.aborted)throw new Error('范围查询已取消');const data=await readJson(`${baseUrl()}static/osm/routes/${shardFileName(shard)}`,signal) as Shard;checkShard(shard,data);for(const id of group)results.push({id,segments:unpackSegments(data[id.slice(4)])});}
+ const queue=[...groups];let cursor=0;
+ await Promise.all(Array.from({length:Math.min(3,queue.length)},async()=>{while(cursor<queue.length){if(signal.aborted)throw new Error('范围查询已取消');const [shard,group]=queue[cursor++];let data=cache.get(shard);if(!data){data=await readJson(`${baseUrl()}static/osm/routes/${shardFileName(shard)}`,signal) as Shard;checkShard(shard,data);if(signal.aborted)throw Error('范围查询已取消');cache.set(shard,data);while(cache.size>8)cache.delete(cache.keys().next().value!);}else{cache.delete(shard);cache.set(shard,data);}for(const id of group)results.push({id,segments:unpackSegments(data[id.slice(4)])});}}));
  return results;
 }
 

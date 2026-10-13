@@ -9,7 +9,7 @@ test('full overview clusters and bounded geometry are independent of four pinned
  const rows:SpatialRow[]=Array.from({length:14430},(_,i)=>[`osm-${i}`,0,i/14430,1,i/14430+0.01,i%94]);
  const bounds:[number,number,number,number]=[-1,-1,2,2];
  const groups=clusters(rows,bounds);assert.equal(groups.reduce((n,g)=>n+g.count,0),14430);assert.ok(groups.length<=49);
- const limited=limitedRows(rows,bounds);assert.ok(limited.length<=12);assert.ok(new Set(limited.map(r=>r[5])).size<=3);
+ const limited=limitedRows(rows,bounds);assert.equal(limited.length,100);assert.ok(new Set(limited.map(r=>r[5])).size>3);
 });
 test('invalid or wrong-version spatial documents fail closed',()=>{
  const row:SpatialRow=['osm-1',0,0,1,1,0];assert.equal(validateSpatial({version:1,rows:[row]},['osm-1']).length,1);
