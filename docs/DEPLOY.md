@@ -2,7 +2,19 @@
 
 当前公开版包含北京 OpenStreetMap 提取快照（14,430 条路线/命名路径片段）、数学合成轨迹、程序绘制的缩略图、原创插画和开源字体。**公网部署即公开完整数据集**，再分发必须遵守 ODbL 署名与许可。命名路径片段不是完整行程；海拔来自地形插值、非实测，轨迹未经实走验证，**不可用于导航**。账户、支付、组队与离线地图等未接入服务。收藏、备注和 GPX 导入保存在浏览器；导出在本机生成。GPS 需要 HTTPS 和主动授权，不应向站点上传私人轨迹。
 
-## 最新发布：20261012T060140Z（2026-10-12）
+## 最新发布：20261012T235106Z（2026-10-13）
+
+- 用户明确“提交，推送，部署”。功能提交 `6e9ddde`：统一路线卡片正常嵌入 OpenFreeMap Liberty 真实底图与完整分段轨迹；仅可见卡片按需加载，最多6个预览名额，离屏/隐藏释放，不抢滚动。覆盖经典/列表/搜索/公开收藏历史及首页地图选中卡。私人卡片不默认新增外部底图请求；关闭tiles时公开卡片也不请求底图。**无截图持久缓存、后台截图生成或底图代理**。
+- Sol6.1 medium 实施、Astra high 两轮独立验收，最终 `approve`；类型检查、渐进滚入激活、候选条遮挡及resize证据读取四项返工关闭。准确报告：`.check-run/runs/2026-10-12T13-14-06-910Z-9ab6b5ae-48b8-4c11-bda5-cedfb91293cc/review-2.json`。发布前96个源码文件逐字节匹配独立审查的fresh-source；手机未操作，批准仅限本地桌面。
+- 从干净 `git archive 6e9ddde` 重建，复用已有依赖/全量数据，并先用已核SHA的旧manifest播种时间戳保持逻辑。typecheck、52项单测、公开构建/打包通过；14,528个OSM文件（含两份空间sidecar）与旧线上全部SHA相同，14,430路线/94分片不变。
+- 包共14,546文件 / 72,951,368 B，H5 JS 1,596,078 B。archive SHA-256 `5d7565199794c4cf636bf3bfe86bf04578df0342a97016ce99a1a5bfe363084b`；扁平manifest SHA-256 `4da860361f9369bf9549f66043420fab60c88220e1186d0e8d94e1af7de61b83`。包、manifest及三份发布工具上传前后SHA一致；没有更改发布工具。
+- 远端 `setsid nohup` 长校验完整结束：`HTTP_OK files=14546 SHA-256 matches; metadata_404=14554`、`PUBLISH_OK`、`DEPLOY_SITE_OK`、`DEPLOY_EXIT=0`。`current=releases/20261012T235106Z`，旧 `20261012T060140Z` 与 `.deploy-20261012T060140Z/manifest.json` 保留回退；新清单在 `.deploy-20261012T235106Z/manifest.json`，不在公开树内。
+- 干净包localhost及正式URL完整通过 `test-card-basemap.mjs`、`test-map-first.mjs`、`test-map-provider.mjs`。真实经典/非经典底图与轨迹、渐进滚动/触摸/来源点击、详情三态/地图返回、失败恢复/许可下载均通过；0pageerrors，最大预览GL4，详情收起地图占80.57%。正式URL是协调者桌面回归，不是新一轮独立审查。
+- 首跑失败据实保留：本地卡片等待底图就绪超时，线上详情首次45秒内未进入ready；不是把失败删掉取绿。后续诊断本地四卡及线上详情均取得真实特征/多色像素ready，未观察到失败请求或页面错误，未改源码/放宽断言即完整重跑通过。初次超时根因未确认，不保证第三方每次加载成功或真机网络表现。证据分别在 `local-card/`、`online-interactive/` 及 `provider-diagnostic.json`、`online-diagnostic.json`。
+- 主站/Fleeting/HairPlay入口响应前后相同。开始时站点Caddy配置已是 `9b721eabd326425528a2addd68fa4ca5fbc11427e407b078ec2b861ff7c9fefa`（不同于上轮历史值），本轮原样保持；主配置 `d31cec4506c8de7fe088a7119132964d7b56c087c0c590a4ffba18f6079f3739` 不变。无配置修改、reload、服务重启或手机/ADB/mDNS操作。
+- 本轮证据：gitignored `artifacts/card-basemap/publish/`。回退仍使用旧版自己的manifest与部署协调锁，`--mode switch`；不删除旧版，不回写任何其它应用配置。截图持久缓存许可和中国地图公开服务要求仍未核实。
+
+## 历史发布：20261012T060140Z（2026-10-12）
 
 - 用户明确“提交、推送、部署”；发布功能提交 `a14b959`，只含首页交互路线地图/列表切换及详情三态可拖动面板。收起时390×844模拟移动视口地图占80.57%，返回保留首页视口/选择。**卡片真实底图截图缓存仍未实现**，许可待澄清；本次不包含它。
 - 真实 Sol6.1 medium 实施、Astra high 独立两轮验收，第二轮 `approve`；首轮展开/横屏说明裁切R1修复。报告 `artifacts/map-first/interactive/review-2/REVIEW.md`；49项客户端测试、11项公开构建/发布/config离线测试、sidecar测试、typecheck、H5/MP构建、目录校验及完整Chrome回归通过。手机完全未连接/操作，独立批准仅限桌面交互子阶段，不是法律或真机结论。
