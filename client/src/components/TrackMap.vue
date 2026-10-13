@@ -1,5 +1,5 @@
 <template>
- <view class="map-shell" :class="{'preview-map':preview}" :data-viewport="viewportText" :data-state="baseState">
+ <view class="map-shell" :class="{'preview-map':preview,'planning-map':editable}" :data-viewport="viewportText" :data-state="baseState">
   <!-- #ifdef H5 -->
   <div ref="host" class="map-canvas" aria-label="路线交互地图"></div>
   <!-- #endif -->
@@ -252,6 +252,22 @@ if(map&&props.position)map.setView([props.position.lat,props.position.lon],16);
 defineExpose({fit,zoom,locate});
 </script>
 <style>
+/* The narrow planning hint wraps to two lines; leave its full height clear. */
+.map-shell.planning-map :deep(.leaflet-bottom.leaflet-left){bottom:96px}
+/* Planning's raised scale uses the left lane; preserve failure text beside it. */
+.map-shell.planning-map .map-failure{left:120px;padding-left:0;padding-right:0}
+/* Only short detail maps need a second left-hand lane: the normal scale lane
+   sits under Back at 120px. Keep the sheet height and all controls unchanged. */
+:global(.detail-map){container-type:size;container-name:detail-map}
+@container detail-map (max-height:150px){
+ .map-shell.map-shell :deep(.leaflet-bottom.leaflet-left){bottom:44px}
+ .map-shell.map-shell :deep(.leaflet-control-scale){margin-left:128px}
+}
+@container detail-map (max-height:210px){
+ /* Short and half-height landscape maps reserve the lane between Back/More
+    for failure text, above the scale; no map or sheet size changes. */
+ .map-shell .map-failure{top:4px;left:56px;right:56px;padding:5px 0;line-height:17px}
+}
 .map-shell :deep(.leaflet-bottom.leaflet-left){bottom:66px;pointer-events:none}.home-map-browser .map-shell :deep(.leaflet-bottom.leaflet-left){bottom:20px}.map-shell :deep(.leaflet-control-scale){margin:0 0 0 8px;pointer-events:none}.map-shell :deep(.leaflet-control-scale-line){background:#fffffff0;color:#263c33;font-size:11px;line-height:16px}.preview-map{pointer-events:none}.preview-map .map-failure{top:6px;font-size:11px}.map-shell{height:100%;width:100%;position:relative;background:#e0e5dc}.map-canvas{height:100%;width:100%;z-index:0;background-color:#dce2d5;background-image:repeating-radial-gradient(ellipse at 25% 50%,transparent 0px,transparent 32px,#c9d4c844 33px,#c9d4c844 34px)}.map-credit{position:absolute;bottom:22px;right:5px;padding:2px 4px;background:#ffffffd9;font-size:9px;color:#555;z-index:2;pointer-events:none}
 .map-credit.compact{padding:0;background:transparent;pointer-events:auto;font-size:12px;z-index:4}.map-info{position:relative}.map-info>summary{list-style:none;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fffffff0;color:#365b60;font-size:20px}.map-info>summary::-webkit-details-marker{display:none}.map-info>summary:focus-visible{outline:2px solid #365b60;outline-offset:2px}.map-info-content{position:fixed;top:64px;bottom:auto;right:max(20px,calc((100vw - 430px)/2 + 20px));z-index:20;box-sizing:border-box;width:284px;max-width:calc(100vw - 40px);max-height:calc(100dvh - 84px);overflow:auto;padding:12px;background:#fffffff5;border-radius:8px;box-shadow:0 2px 12px #0002;line-height:1.6}.map-info-content>div{margin-bottom:8px}.map-failure{position:absolute;top:54px;left:10px;right:10px;text-align:center;padding:5px 8px;background:#ffffffe6;border-radius:6px;color:#765127;font-size:12px;z-index:2;pointer-events:none}
 .map-attribution{position:absolute;bottom:2px;right:5px;z-index:2;background:#ffffffe8;padding:2px 4px;font-size:10px;line-height:14px}.map-attribution a{color:#365b60;text-decoration:underline}.overview-cluster button{background:#00865e;color:white;border:2px solid white;border-radius:50%;width:38px;height:38px;padding:0;font-size:12px;box-shadow:0 2px 5px #0003}

@@ -19,7 +19,7 @@ async function dragHandle(dy){const box=await page.locator('.sheet-grip').boundi
 async function disclosureChecks(name){
  const scale=detail().locator('.leaflet-control-scale-line');const sv=await view(detailMap());const metric=await scale.evaluate(el=>({text:el.textContent,width:parseFloat(el.style.width)}));const metres=metric.text.includes('km')?parseFloat(metric.text)*1000:parseFloat(metric.text);const mpp=40075016.686*Math.cos(sv.center[0]*Math.PI/180)/(256*2**sv.zoom);assert.ok(Math.abs(metres/metric.width-mpp)/mpp<.02,`${name}: real metric scale ${JSON.stringify({metric,sv,mpp,actual:metres/metric.width})}`);
  const sb=await scale.boundingBox(),mb=await detail().locator('.map-canvas').boundingBox();assert.ok(sb.y>=mb.y&&sb.y+sb.height<=mb.y+mb.height,`${name}: scale not clipped`);
- for(const control of await detail().locator('.offline, .map-info > summary, .map-attribution').all()){const cb=await control.boundingBox();assert.ok(!(sb.x<cb.x+cb.width&&sb.x+sb.width>cb.x&&sb.y<cb.y+cb.height&&sb.y+sb.height>cb.y),`${name}: scale separate from required controls`);}
+ for(const control of await detail().locator('.map-back, .map-more, .offline, .map-info > summary, .map-attribution').all()){const cb=await control.boundingBox();assert.ok(!(sb.x<cb.x+cb.width&&sb.x+sb.width>cb.x&&sb.y<cb.y+cb.height&&sb.y+sb.height>cb.y),`${name}: scale separate from required controls`);}
  const info=detail().locator('.map-info');
  if(await info.getAttribute('open')===null)await page.getByLabel('地图说明',{exact:true}).click();
  const content=info.locator('.map-info-content');await content.waitFor({state:'visible'});
