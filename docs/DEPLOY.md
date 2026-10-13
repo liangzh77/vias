@@ -2,7 +2,20 @@
 
 当前公开版包含北京 OpenStreetMap 提取快照（14,430 条路线/命名路径片段）、数学合成轨迹、程序绘制的缩略图、原创插画和开源字体。**公网部署即公开完整数据集**，再分发必须遵守 ODbL 署名与许可。命名路径片段不是完整行程；海拔来自地形插值、非实测，轨迹未经实走验证，**不可用于导航**。账户、支付、组队与离线地图等未接入服务。收藏、备注和 GPX 导入保存在浏览器；导出在本机生成。GPS 需要 HTTPS 和主动授权，不应向站点上传私人轨迹。
 
-## 最新发布：20261012T235106Z（2026-10-13）
+## 最新发布：20261013T043944Z（2026-10-13）
+
+- 用户明确“提交，推送，部署”。功能提交 `75a095f`，布局补修 `f8fa621`：大地图动态公制比例尺；本机保存的聚合阈值8–18、默认12；当前视口精确相交不足100条全显示，超过100条按元数据与空间分散推荐。取消12条/3分片资格限制，保留3并发/8分片查询缓存。推荐不是人气、实走、安全或完整行程评级；卡片/详情保持完整几何，不做截图持久缓存。
+- 主体经 Sol6.1 medium/Astra high 两轮，修复高倍缩放时全路线抽点丢掉视野内轨迹的R1：先裁剪原几何到视口，再有界简化，避免二次简化。独立报告 `artifacts/map-display/review-2/REVIEW.md`；三条原失败路线及额外1,058个真实几何样本验证通过。
+- **第一次发布已撤回，不能记为成功**：候选 `20261013T025344Z` 曾切换；本地四套回归通过，线上display/provider通过，但map-first/card来源弹窗等待30秒超时。协调者查看截图另发现真实遗漏：844×390展开详情时，比例尺与返回按钮重叠36×12px。只中断本次发布的HTTP验证子进程，触发既有ERR/CAS原子回退到 `20261012T235106Z`，日志明确 `Restoring ... with mv -T`、`DEPLOY_EXIT=1`（810秒）。失败版本、包及日志保留在 `artifacts/map-display/publish/` 与远端对应stage，不作可信回退点；没有手工强制改链接或修改Caddy。
+- 补修按原“不遮挡”范围继续真实Sol/Astra独立两轮。首轮解决返回按钮/窄屏规划提示遮挡，但Astra额外失败态诊断发现失败提示完整覆盖比例尺86×21px；第二轮为短详情、横屏半屏及规划页面分别错开失败提示与尺。保留120px最低地图及既有控件；补上back/more、失败提示矩形检查，避免仅依赖会穿透pointer-events:none覆盖层的命中测试。独立60项布局与四套既有浏览器回归全部首跑通过，并亲看截图、复现旧CSS反例再移除验证。最终报告 `artifacts/map-display/release-fix/review-2/REVIEW.md`，run `2026-10-13T03-15-24-283Z-efadc89c-76c0-48d2-a470-3d81ea0bec08` 为 `independent_review_approved`。
+- 从干净 `git archive f8fa621` 重建，冻结100源码文件，先用已核SHA旧manifest播种时间戳。typecheck、60项单测、公开H5构建/打包通过；**全部14,546个构建文件与补修Astra独立浏览器实际测试的H5产物逐文件SHA一致**，复用其完整本地矩阵，不冒称另跑一轮。14,528个原OSM文件（含sidecar）与旧正式版全SHA一致，14,430路线/94分片不变；H5/MP独立编译及公开正反检查通过。
+- 最终包14,546文件 / 72,957,850 B，H5 JS 1,601,582 B。archive SHA-256 `3ed3103bec0a02c21608ff8166fe1dfc0e4c26f5f7e9a30d5c3a66edd7b0c836`；扁平manifest SHA-256 `c98250decf68aeb510cb970f4284acb986a00c878ab4508bf3bce2be2c2027db`。包、清单、三份未改的发布工具及wrapper共6文件上传前后SHA一致。
+- 最终远端 `setsid nohup` 长校验完整成功：`HTTP_OK files=14546 SHA-256 matches; metadata_404=14554`、`PUBLISH_OK`、`DEPLOY_SITE_OK`、`DEPLOY_EXIT=0 ELAPSED_SECONDS=1316`。`current=releases/20261013T043944Z`，旧 `20261012T235106Z` 及 `.deploy-20261012T235106Z/manifest.json` 保留回退。当前清单位于 `.deploy-20261013T043944Z/manifest.json`，不在公开树。
+- **最终版本正式URL五套回归均首跑通过**：`test-scale-layout` 60项正常/tiles-off/失败布局；`test-map-display` 实际两个范围100/36条、阈值设置/键盘/持久化/非法值/失败保存、zoom18环二环绿道确实可见，并单独标记合成HTTP夹具；`test-map-first` 三态/旋转/实际点选/来源链接/许可/导出；`test-card-basemap` 完整轨迹/渐进滚动/离屏释放，最大预览GL4；`test-map-provider` 真实底图/失败恢复及GPU读回预算。均0页面错误，收起地图80.57%。来源实际点击和弹窗身份断言没有删改；首个候选的弹窗超时根因仍未确认，不能因最终通过就虚构网络原因或服务可用性保证。正式URL为协调者桌面回归，非新的独立/真机批准。
+- 主站/Fleeting/HairPlay入口响应/hash前后相同；站点Caddy SHA `9b721eabd326425528a2addd68fa4ca5fbc11427e407b078ec2b861ff7c9fefa`、主配置 `d31cec4506c8de7fe088a7119132964d7b56c087c0c590a4ffba18f6079f3739` 不变。没有配置修改、reload、服务重启或手机/ADB/mDNS/guard操作。
+- 最终证据 `artifacts/map-display/publish-final/`，此前问题和补修在 `publish/`、`release-fix/`，均gitignored。回退使用旧版自己的manifest及 `deploy-site.py --mode switch` 协调锁，不删除旧版、不回写其它应用配置。真机、微信实际平台、截图缓存许可及中国地图公开服务要求仍不在本轮技术批准范围。
+
+## 历史发布：20261012T235106Z（2026-10-13）
 
 - 用户明确“提交，推送，部署”。功能提交 `6e9ddde`：统一路线卡片正常嵌入 OpenFreeMap Liberty 真实底图与完整分段轨迹；仅可见卡片按需加载，最多6个预览名额，离屏/隐藏释放，不抢滚动。覆盖经典/列表/搜索/公开收藏历史及首页地图选中卡。私人卡片不默认新增外部底图请求；关闭tiles时公开卡片也不请求底图。**无截图持久缓存、后台截图生成或底图代理**。
 - Sol6.1 medium 实施、Astra high 两轮独立验收，最终 `approve`；类型检查、渐进滚入激活、候选条遮挡及resize证据读取四项返工关闭。准确报告：`.check-run/runs/2026-10-12T13-14-06-910Z-9ab6b5ae-48b8-4c11-bda5-cedfb91293cc/review-2.json`。发布前96个源码文件逐字节匹配独立审查的fresh-source；手机未操作，批准仅限本地桌面。
