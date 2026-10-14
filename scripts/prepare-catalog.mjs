@@ -65,7 +65,7 @@ function buildManifest(index, indexFile, shardDir, coverFiles) {  const relation
   }));
   if (shards.reduce((n, s) => n + s.routes, 0) !== index.routes.length) throw new Error('shard route counts do not add up to the route count');
   return {
-    title: '景行（Vias）OpenStreetMap 北京路线快照',
+    title: '行止（Vias）OpenStreetMap 北京路线快照',
     generated: new Date().toISOString(),
     full: index.full === true,
     source: index.source,
