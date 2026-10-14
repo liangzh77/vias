@@ -2,7 +2,16 @@
 
 当前公开版包含北京 OpenStreetMap 提取快照（14,430 条路线/命名路径片段）、数学合成轨迹、程序绘制的缩略图、原创插画和开源字体。**公网部署即公开完整数据集**，再分发必须遵守 ODbL 署名与许可。命名路径片段不是完整行程；海拔来自地形插值、非实测，轨迹未经实走验证，**不可用于导航**。账户、支付、组队与离线地图等未接入服务。收藏、备注和 GPX 导入保存在浏览器；导出在本机生成。GPS 需要 HTTPS 和主动授权，不应向站点上传私人轨迹。
 
-## 最新发布：20261013T043944Z（2026-10-13）
+## 最新发布：20261014T051207Z（2026-10-14）
+
+- 用户授权“提交，推送，部署”。功能提交 `dd791c1`，文档收尾单独提交：卡片说明收 ⓘ（必要署名仍可见可点）、公制比例尺距离阈值（旧 zoom 设置保留兼容模式）、细外轮廓/最近线段点击与空白取消、近距前台 GPS 循迹记录/偏航提醒与远距经确认交系统地图数据首点、本地卡片可见在线底图/逐条确认删除。在线底图请求会暴露所浏览卡片地理区域，不上传私有轨迹文件或 GPS 逐点；未做截图持久缓存或瓦片代理。数据首点不保证为入口，功能不提供道路导航、锁屏后台 GPS 保证或安全承诺。小程序仅编译且禁用未测定位入口。
+- Sol6.1 medium 实施、Astra high 独立三轮本地验收：首轮 R1–R5（切换参考未加载误报、GPS 点遮挡、增量更新重置缩放、MP 定位入口、来源链接点击断言缺失）退回；第二轮五项解决，发现 R6 保存新轨迹沿用旧参考失败/加载状态；第三轮修复并 `independent_review_approved`。最终报告 `.check-run/runs/2026-10-13T23-59-52-531Z-0eeea391-68ab-44ed-90ac-730e3aed6a69/result.json`。本地独立 66/66 单测、公开 H5/MP、源及构建 14,528 OSM 文件 SHA、九组浏览器回归与失败路径通过。首次失败证据保留，不能当作一次性全绿。
+- 从干净 `git archive dd791c1` 重建，复用已核实全量目录及原 `generated` 时间戳，typecheck、66/66 单测、公开全量 H5/MP 构建、目录验证及打包通过；**14,546 个 H5 构建文件与 Astra 最终实际测试的产物逐文件 SHA 完全一致**。H5 JS 1,612,336 B；原 14,528 OSM 文件未变。包 SHA-256 `df4ff86ea8d58c42f07a44d06504dbd482c222a18a7d667832e10b9458bbcdf0`；扁平发布 manifest SHA-256 `e5b5ec3f81c3788cc2cceac601fd9889f543632282951d30bb343cc75eef086b`。6 份上传文件（包、清单、三发布工具及 wrapper）上传前后 SHA 全同，三发布工具与上版远端哈希一致。干净包本地 UX、最近路线选择及 map-first 回归通过。
+- 生产使用 `deploy-site.py --mode deploy` 协调锁与 `release-remote.sh` 原子切换，未改 Caddy。远端完整结果：`VERIFY_ARCHIVE_OK files=14546`、两次 `VERIFY_TREE_OK files=14546`、`HTTP_OK files=14546 SHA-256 matches; metadata_404=14554`、`PUBLISH_OK current=releases/20261014T051207Z previous=releases/20261013T043944Z`、`DEPLOY_SITE_OK`、`DEPLOY_EXIT=0 ELAPSED_SECONDS=1359`。当前 manifest 在 `/srv/sites/liangz77.cn/vias/.deploy-20261014T051207Z/manifest.json`（不在公开树）；旧 `20261013T043944Z` release 及其自己的 manifest 保留可信回退。
+- 正式 URL 完整桌面回归：`test-map-ux-follow` 15 项模拟 GPS/拒绝定位/过期/偏航/保存竞态/本地卡/删除，`test-map-nearest` 真地图选择与取消，`test-map-display` 100/36 条与缩放，`test-map-first` 实际来源链接弹窗，`test-card-basemap` 实际地图及最多4个同时预览 GL，`test-map-provider` GPU/失败恢复，`test-scale-layout` 60 张正常/无底图/失败布局截图；全部通过，0 页面错误。**这些线上测试由发布协调者运行，不等于真机或新增独立线上验收。** 主站/Fleeting/HairPlay 前后均 HTTP 200；`/vias` 301、未知/研究/暂存清单 404；Caddy 站点 SHA `9b721eab…` 和主 SHA `d31cec45…` 不变，Caddy MainPID 7884、ActiveEnterTimestamp 未变。无手机 ADB/mDNS/真实 GPS 操作。
+- 证据（不进 Git）：`artifacts/map-ux-follow/publish-20261014T051207Z/`。服务提供方条款及中国公开地图审批/服务要求未由技术验收解决。回退需先核实 current 未改变，使用旧版 `.deploy-20261013T043944Z/manifest.json` 与 `deploy-site.py --mode switch` 协调锁，不盲目改软链、配置或邻站。
+
+## 历史发布：20261013T043944Z（2026-10-13）
 
 - 用户明确“提交，推送，部署”。功能提交 `75a095f`，布局补修 `f8fa621`：大地图动态公制比例尺；本机保存的聚合阈值8–18、默认12；当前视口精确相交不足100条全显示，超过100条按元数据与空间分散推荐。取消12条/3分片资格限制，保留3并发/8分片查询缓存。推荐不是人气、实走、安全或完整行程评级；卡片/详情保持完整几何，不做截图持久缓存。
 - 主体经 Sol6.1 medium/Astra high 两轮，修复高倍缩放时全路线抽点丢掉视野内轨迹的R1：先裁剪原几何到视口，再有界简化，避免二次简化。独立报告 `artifacts/map-display/review-2/REVIEW.md`；三条原失败路线及额外1,058个真实几何样本验证通过。
