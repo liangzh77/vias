@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const url=process.env.MAP_FIRST_URL||'http://127.0.0.1:8791/vias/';
 const out=process.env.MAP_FIRST_OUT||'artifacts/map-first/interactive/browser';fs.mkdirSync(out,{recursive:true});
-const report={tests:[],errors:[],requests:[]};
+const report={tests:[],errors:[],requests:[],sourceLinks:[],activeSourceLink:null};
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
 const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));
@@ -28,9 +28,10 @@ async function disclosureChecks(name){
   assert.ok(await link.evaluate(el=>{const b=el.getBoundingClientRect();return b.top>=0&&b.left>=0&&b.bottom<=innerHeight&&b.right<=innerWidth&&[.1,.5,.9].every(x=>[.2,.8].every(y=>{const hit=document.elementFromPoint(b.left+b.width*x,b.top+b.height*y);return hit===el||el.contains(hit);}));}),`${name}: complete link visible and unobscured`);
  }
  for(const link of await info.locator('a[target="_blank"]').all()){
-  const href=await link.getAttribute('href'),opened=page.waitForEvent('popup');
+  const href=await link.getAttribute('href');report.activeSourceLink={name,href};
+  const opened=page.waitForEvent('popup');
   const requested=context.waitForEvent('request',{predicate:r=>r.isNavigationRequest()&&r.url()===href,timeout:10000});
-  await link.click();const popup=await opened;assert.equal((await requested).frame().page(),popup);await popup.close();
+  await link.click();const popup=await opened;assert.equal((await requested).frame().page(),popup);await popup.close();report.sourceLinks.push({name,href,popupVerified:true});report.activeSourceLink=null;
  }
  const disclosure=content.getByText('当前视口请求发送至第三方 OpenFreeMap（可能经 Cloudflare）',{exact:true});
  await disclosure.scrollIntoViewIfNeeded();assert.ok(await disclosure.evaluate(el=>{const b=el.getBoundingClientRect();return b.top>=0&&b.bottom<=innerHeight&&[.1,.5,.9].every(x=>[.2,.8].every(y=>{const hit=document.elementFromPoint(b.left+b.width*x,b.top+b.height*y);return hit===el||el.contains(hit);}));}),`${name}: third-party disclosure fully visible`);
@@ -82,7 +83,8 @@ try{
   await shot(`candidate-hit-${size.width}`);
  }
  report.tests.push('selected card dynamic stack: another candidate clickable in portrait/landscape with expanded request disclosure');
- const tap=await home().locator(':scope > .map-shell .map-canvas').evaluate(host=>{const b=host.getBoundingClientRect();for(const path of host.querySelectorAll('.leaflet-overlay-pane path')){if(path.getAttribute('stroke')==='#f45b34')continue;for(const fraction of Array.from({length:21},(_,i)=>i/20)){const p=path.getPointAtLength(path.getTotalLength()*fraction),point=new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM());if(point.x>b.left+20&&point.x<b.right-20&&point.y>b.top+80&&point.y<b.bottom-80&&document.elementFromPoint(point.x,point.y)===path)return {x:point.x,y:point.y};}}return null;});assert.ok(tap,'unselected route stroke has a visible tap target');
+ await page.waitForFunction(()=>document.querySelector('.overview-status')?.textContent?.includes('显示'),null,{timeout:90000});
+ const tap=await home().locator(':scope > .map-shell .map-canvas').evaluate(host=>{const b=host.getBoundingClientRect();for(const path of host.querySelectorAll('.leaflet-overlay-pane path')){if(path.getAttribute('stroke')==='#f45b34'||path.getAttribute('stroke')==='#fff')continue;for(const fraction of Array.from({length:21},(_,i)=>i/20)){const p=path.getPointAtLength(path.getTotalLength()*fraction),point=new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM());if(point.x>b.left+20&&point.x<b.right-20&&point.y>b.top+80&&point.y<b.bottom-80&&host.contains(document.elementFromPoint(point.x,point.y))&&!document.elementFromPoint(point.x,point.y)?.closest('button,a,summary,.overview-selection-stack,.overview-status,.leaflet-control'))return {x:point.x,y:point.y};}}return null;});assert.ok(tap,'unselected route stroke has a visible tap target');
  const oldTitle=await home().locator('.overview-selected').innerText();await page.mouse.click(tap.x,tap.y);await page.waitForTimeout(200);assert.notEqual(await home().locator('.overview-selected').innerText(),oldTitle,'actual geometry tap selects a different route');assert.ok(await home().locator('path[stroke="#f45b34"]').count());await shot('home-selected');
  const selectedText=await home().locator('.overview-selected').innerText(),saved=await view(home().locator(':scope > .map-shell'));const homeCanvas=await home().locator(':scope > .map-shell .maplibregl-canvas').elementHandle();
  await home().locator('.overview-selected .route-preview-open').click();await state('half');await detail().locator('.maplibregl-canvas').waitFor();assert.equal(await home().locator('.maplibregl-canvas').count(),0);assert.equal(await page.locator('.maplibregl-canvas').count(),1);await page.locator('.map-back').click();await home().locator('.overview-cards > *').first().waitFor();assert.equal(await home().locator('.overview-selected').innerText(),selectedText);const restored=await view(home().locator(':scope > .map-shell'));assert.deepEqual(restored.center,saved.center);assert.equal(restored.zoom,saved.zoom);assert.equal(await homeCanvas.evaluate(e=>e.isConnected),false,'hidden big map releases GL; return recreates saved viewport');assert.ok(await page.locator('.maplibregl-canvas').count()<=2);

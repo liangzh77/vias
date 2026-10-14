@@ -3,7 +3,7 @@
   <button class="route-preview-open" :class="{'classic-card':classic}" role="button" tabindex="0" :aria-label="'打开 '+route.title" @click="$emit('open',route)" @keydown.enter.prevent="$emit('open',route)" @keydown.space.prevent="$emit('open',route)">
    <view class="route-preview-picture">
     <!-- #ifdef H5 -->
-    <TrackMap v-if="leased&&segments.length" :key="generation" :segments="segments" :tiles="publicMap&&tiles" preview />
+    <TrackMap v-if="leased&&segments.length" :key="generation" :segments="segments" :tiles="tiles" preview />
     <!-- #endif -->
     <image v-if="!leased||!segments.length" :src="route.cover" mode="aspectFit" />
     <!-- #ifdef H5 -->
@@ -16,17 +16,18 @@
    <view class="route-preview-title"><text>{{route.title}}</text><text class="muted">{{route.activity}} · {{route.distance.toFixed(2)}} km · 爬升 {{route.ascent}} m</text></view>
   </button>
   <!-- #ifdef H5 -->
-  <view v-if="publicMap&&tiles" class="preview-credit" @click.stop>
-   <a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a>
-   <details><summary>地图请求说明</summary><text>可见卡片视口发送至第三方 OpenFreeMap（可能经 Cloudflare）；不上传轨迹文件，不保存截图。</text></details>
+  <view v-if="tiles&&leased" class="card-map-attribution" @click.stop><a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a></view>
+  <view class="preview-credit" @click.stop>
+   <text v-if="!tiles">仅轨迹 · 在线底图已关闭</text>
+   <details class="card-info"><summary aria-label="卡片地图说明">ⓘ</summary><text>地图请求说明：可见卡片区域由设备直连第三方 <a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a>（可能经 Cloudflare）。私有轨迹文件与 GPS 逐点不上传；地图区域会暴露。不保存截图或持久缓存地图，可在设置关闭。</text><text>{{route.source}}</text><a v-if="safeLink(route.sourceUrl)" :href="route.sourceUrl" target="_blank" rel="noopener">路线来源</a><a v-if="safeLink(route.licenseUrl)" :href="route.licenseUrl" target="_blank" rel="noopener">{{route.license}}</a><button @click.stop="rendererLicense">渲染库许可</button></details>
   </view>
-  <view v-else class="preview-credit">仅轨迹 · {{publicMap?'在线底图已关闭':'私人轨迹不自动请求外部地图'}}</view>
   <button v-if="leased" class="preview-retry" @click.stop="retry">{{error?'重试轨迹预览':'重新加载预览'}}</button>
   <!-- #endif -->
+  <button v-if="route.id.startsWith('local-')" class="preview-delete" @click.stop="$emit('delete',route)">删除本地轨迹</button>
  </view>
 </template>
 <script setup lang="ts">
-import {computed,ref,watch,onMounted,onBeforeUnmount} from 'vue';
+import {ref,watch,onMounted,onBeforeUnmount} from 'vue';
 import type {Route,Point} from '../core/track';
 // #ifdef H5
 import TrackMap from './TrackMap.vue';
@@ -34,9 +35,14 @@ import {loadCardGeometry} from '../core/osm-catalog';
 import {cardLease} from '../core/card-map-pool';
 // #endif
 const props=withDefaults(defineProps<{route:Route;tiles:boolean;active?:boolean;classic?:boolean}>(),{active:true});
-defineEmits<{(e:'open',route:Route):void}>();
+defineEmits<{(e:'open',route:Route):void;(e:'delete',route:Route):void}>();
 const root=ref(),leased=ref(false),segments=ref<Point[][]>([]),error=ref(false),generation=ref(0);
-const publicMap=computed(()=>props.route.id.startsWith('osm-')||props.route.id.startsWith('demo-'));
+function safeLink(url?:string){return !!url&&/^https?:\/\//i.test(url);}
+function rendererLicense(){
+// #ifdef H5
+import('./vector-basemap').then(({rendererLicenses})=>uni.showModal({title:'渲染库许可',content:rendererLicenses,showCancel:false}));
+// #endif
+}
 // #ifdef H5
 let visible=false,release:(()=>void)|undefined,observer:IntersectionObserver|undefined,controller:AbortController|undefined,disposed=false;
 const key={};
@@ -63,5 +69,5 @@ if(leased.value)geometry();
 }
 </script>
 <style>
-.route-preview-card{display:block;background:white;border-radius:10px;overflow:hidden;margin:10px 12px;border:1px solid #e3e8e5;min-width:0}.route-preview-open{display:block;width:100%;padding:0;text-align:left;background:white;line-height:1.4;border-radius:0}.route-preview-open::after{display:none}.route-preview-picture{height:170px;position:relative}.route-preview-picture image{width:100%;height:100%}.route-preview-title{padding:8px 10px}.route-preview-title text{display:block;font-size:14px}.route-preview-title .muted{font-size:12px;margin-top:4px}.preview-credit{padding:5px 8px;font-size:11px;line-height:18px;color:#47605a;background:#f4f8f5}.preview-credit a{display:inline-block;white-space:nowrap;color:#365b60;text-decoration:underline}.preview-credit details{font-size:12px}.preview-credit summary{cursor:pointer}.preview-credit details text{display:block}.preview-error{position:absolute;bottom:5px;left:5px;background:#fff;padding:3px;font-size:12px}.preview-retry{font-size:12px;line-height:30px}.classic-grid .route-preview-card{margin:0}.classic-grid .route-preview-picture{height:150px}
+.route-preview-card{position:relative;display:block;background:white;border-radius:10px;overflow:hidden;margin:10px 12px;border:1px solid #e3e8e5;min-width:0}.card-map-attribution{position:absolute;top:148px;right:2px;background:#fffffff0;font-size:10px;line-height:20px;z-index:2}.card-map-attribution a{color:#365b60;text-decoration:underline}.classic-grid .card-map-attribution{top:128px}.overview-selected .card-map-attribution{top:98px}.preview-delete{color:#b32525;font-size:13px;line-height:32px}.route-preview-open{display:block;width:100%;padding:0;text-align:left;background:white;line-height:1.4;border-radius:0}.route-preview-open::after{display:none}.route-preview-picture{height:170px;position:relative}.route-preview-picture image{width:100%;height:100%}.route-preview-title{padding:8px 10px}.route-preview-title text{display:block;font-size:14px}.route-preview-title .muted{font-size:12px;margin-top:4px}.preview-credit{padding:5px 8px;font-size:11px;line-height:18px;color:#47605a;background:#f4f8f5}.preview-credit a{display:inline-block;white-space:nowrap;color:#365b60;text-decoration:underline}.preview-credit details{font-size:12px}.preview-credit summary{cursor:pointer}.preview-credit details text{display:block}.preview-error{position:absolute;bottom:5px;left:5px;background:#fff;padding:3px;font-size:12px}.preview-retry{font-size:12px;line-height:30px}.classic-grid .route-preview-card{margin:0}.classic-grid .route-preview-picture{height:150px}
 </style>

@@ -8,7 +8,7 @@
 
   <!-- #ifdef H5 -->
   <view v-if="page==='home'" class="home-mode"><button :class="{active:homeMode==='list'}" @click="homeMode='list'">列表</button><button :class="{active:homeMode==='map'}" @click="homeMode='map'">地图</button></view>
-  <view v-if="homeMode==='map'" :class="{'home-map-hidden':page!=='home'}" class="home-map-region"><HomeMap :tiles="tiles" :threshold="routeThreshold" :active="page==='home'" @open="openRoute" /></view>
+  <view v-if="homeMode==='map'" :class="{'home-map-hidden':page!=='home'}" class="home-map-region"><HomeMap :tiles="tiles" :threshold="routeThreshold" :legacy-zoom="legacyZoom" :active="page==='home'" @open="openRoute" /></view>
   <!-- #endif -->
   <scroll-view v-if="page==='home'&&homeMode==='list'" scroll-y class="page-scroll with-tabs">
    <view class="home-head"><image class="brand" :src="asset('brand')" mode="aspectFit" /><button class="search-pill" @click="go('search')">搜索目的地/线路</button><button class="icon-button" aria-label="消息" @click="unavailable('消息','本地研究版没有连接六只脚账号或消息服务器。')"><Icon name="mail" :size="28" /></button></view>
@@ -26,7 +26,7 @@
    <view v-else class="photo-empty"><Icon name="photo" :size="34" color="#c9c8cf"/><text>还没有照片</text><text class="muted">没有真实照片就留空：本版不内置示例照片或占位图。照片只能来自你自己的记录。</text><button @click="go('record')">去记录</button></view>
    <template v-if="research">
     <view class="section-title route-section"><text>精选线路</text><button @click="go('routes')">查看全部 ›</button></view>
-    <RouteCard v-for="r in routes.slice(0,2)" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" />
+    <RouteCard v-for="r in routes.slice(0,2)" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" @delete="deleteLocal" />
    </template>
    <button class="research-link" @click="sheet='about'">本地研究 · 数据来源与功能边界</button>
   </scroll-view>
@@ -37,7 +37,7 @@
     <view v-if="routeTab==='all'" class="info-strip"><template v-if="catalogState!=='ready'&&catalogState!=='error'">正在载入路线目录…（先显示 {{ officialOsmRoutes.length }} 条精选）</template><template v-else-if="catalogState==='error'">路线目录加载失败：{{ catalogError }}<button @click="retryCatalog">重试</button></template><template v-else>{{ catalogFull?'北京 OSM 提取快照':'本地示例目录' }}：{{ officialOsmRoutes.length }} 条 OpenStreetMap 路线（其中 {{ wayCount }} 条为命名路径片段，不是完整行程）+ {{ demoRoutes.length }} 条合成示例 · {{ catalogNotice }} · 数据 © OpenStreetMap 贡献者 ODbL 1.0<button @click="go('data')">数据说明</button><button @click="routeTab='nearby'">按距离排序</button></template></view>
     <view v-if="routeTab==='nearby'" class="info-strip">本地目录{{ nearbySort==='distance'?(position?'按距起点距离排序':'未获取定位，按目录顺序展示'):nearbySort==='length'?'按里程排序':'按爬升排序' }} · 共 {{ routes.length }} 条路线{{ catalogState==='loading'?'（路线目录仍在载入中）':catalogState==='error'?'（路线目录加载失败）':'' }}，不是全站附近列表。<button @click="nearbySort='distance';locate()">定位排序</button></view>
     <view v-if="routeTab==='nearby'" class="nearby-sort"><button v-for="s in nearbySorts" :key="s.key" class="nearby-sort-option" :class="{active:nearbySort===s.key}" @click="nearbySort=s.key">{{ s.label }}</button></view>
-    <RouteCard v-for="r in shownRoutes" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" />
+    <RouteCard v-for="r in shownRoutes" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" @delete="deleteLocal" />
     <button v-if="visible<displayedRoutes.length" class="primary load-more" @click="loadMore">加载更多（{{ shownRoutes.length }} / {{ displayedRoutes.length }}）</button>
     <view v-else class="list-end">已展示全部 {{ displayedRoutes.length }} 条{{ routeTab==='featured'?'精选与本地路线':'本地路线'}}</view>
    </scroll-view>
@@ -51,7 +51,7 @@
    <button class="cell" @click="sheet='distanceFilter'"><text>里程</text><text class="muted">{{ distanceFilter }} ›</text></button>
    <view class="cell"><text>只看已收藏</text><switch :checked="onlyFavorites" color="#00bf7c" @change="onlyFavorites=eventValue($event)" /></view>
    <button class="primary search-submit" @click="searchDone=true">搜索</button>
-   <template v-if="searchDone"><view class="field-label">本地结果 · {{ searchResults.length }} 条</view><RouteCard v-for="r in searchShown" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" /><button v-if="visible<searchResults.length" class="primary load-more" @click="loadMore">加载更多（{{ searchShown.length }} / {{ searchResults.length }}）</button><view v-if="!searchResults.length" class="empty"><Icon name="search" :size="42" color="#bbb"/><text>{{ catalogState==='loading'?'正在载入路线目录，结果可能还不完整…':catalogState==='error'?'路线目录加载失败，只搜索到本地与示例路线':'没有找到匹配的本地路线' }}</text><button v-if="catalogState==='ready'" @click="resetSearch">清除筛选</button><button v-else-if="catalogState==='error'" @click="retryCatalog">重试载入目录</button></view></template>
+   <template v-if="searchDone"><view class="field-label">本地结果 · {{ searchResults.length }} 条</view><RouteCard v-for="r in searchShown" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" @delete="deleteLocal" /><button v-if="visible<searchResults.length" class="primary load-more" @click="loadMore">加载更多（{{ searchShown.length }} / {{ searchResults.length }}）</button><view v-if="!searchResults.length" class="empty"><Icon name="search" :size="42" color="#bbb"/><text>{{ catalogState==='loading'?'正在载入路线目录，结果可能还不完整…':catalogState==='error'?'路线目录加载失败，只搜索到本地与示例路线':'没有找到匹配的本地路线' }}</text><button v-if="catalogState==='ready'" @click="resetSearch">清除筛选</button><button v-else-if="catalogState==='error'" @click="retryCatalog">重试载入目录</button></view></template>
   </scroll-view>
 
   <template v-if="page==='detail'">
@@ -68,19 +68,19 @@
      <ElevationChart v-if="geometry==='ready'" :segments="current.segments"/><view v-else class="elevation-chart pending"><text>{{ geometry==='loading'?'海拔剖面随轨迹一起按需加载…':'海拔剖面暂不可用' }}</text></view>
      <view class="source-card"><text>{{ current.source }}</text><text>作者：{{ current.author }} · {{ pointCountOf(current) }} 个轨迹点</text><text selectable>{{ current.sourceUrl || '数据仅保存在本设备浏览器' }}</text><text v-if="current.licenseUrl" selectable>许可：{{ current.license }} — {{ current.licenseUrl }}</text><text>导出 GPX/KML 文件会一并写入作者、来源与许可信息。轨迹仅供研究参考，不代表道路可通行。出发前请自行核实。</text></view>
     </view>
-    <template #actions><view class="detail-actions"><button @click="toggleFavorite(current.id)"><Icon name="star" :color="favorites.includes(current.id)?'#00bd7b':'#333'"/><text>{{ favorites.includes(current.id)?'已收藏':'收藏' }}</text></button><button @click="sheet='notes'"><Icon name="comment"/><text>备注</text></button><button @click="followRoute"><Icon name="pin"/><text>循迹</text></button><button @click="sheet='export'"><Icon name="share"/><text>导出</text></button><button class="navigate" @click="followRoute">导航</button></view></template>
+    <template #actions><view class="detail-actions"><button @click="toggleFavorite(current.id)"><Icon name="star" :color="favorites.includes(current.id)?'#00bd7b':'#333'"/><text>{{ favorites.includes(current.id)?'已收藏':'收藏' }}</text></button><button @click="sheet='notes'"><Icon name="comment"/><text>备注</text></button><button @click="followRoute"><Icon name="pin"/><text>循迹</text></button><button @click="sheet='export'"><Icon name="share"/><text>导出</text></button><button class="navigate" @click="navigateRoute">导航</button></view></template>
    </DetailSheet>
   </template>
 
   <view v-if="page==='record'||page==='plan'" class="record-view">
    <view class="gps-bar"><text>{{ position ? position.lat.toFixed(5)+'° N, '+position.lon.toFixed(5)+'° E' : '未获取当前位置 · 点击右侧定位' }}</text><text>GPS <text :class="position?'green':'muted'">▥</text></text></view>
-   <view class="record-map"><TrackMap ref="recordMap" :segments="mapSegments" :tiles="tiles" :editable="page==='plan'" :position="position" @point="addPlanPoint"/>
+   <view class="record-map"><TrackMap ref="recordMap" :segments="mapSegments" :tiles="tiles" :editable="page==='plan'" :auto-fit="false" :end-markers="page==='plan'" :position="position" @point="addPlanPoint"/>
     <view class="map-top-tools"><button class="floating" aria-label="返回" @click="leaveRecord"><Icon name="back"/></button><button class="map-chip" @click="sheet='tracks'">轨迹({{ following?1:0 }}) › <Icon name="eye" :size="18" color="#38ba80"/></button><button class="map-chip" @click="unavailable('雷达','需要位置权限与实际设备方位传感器；本版暂未实现雷达视图。')">雷达 <Icon name="eye" :size="18"/></button><button class="map-chip" @click="unavailable('大指南针','尚未接入罗盘校准与设备方向传感器，不能用作户外定向工具。')">大指南针</button></view>
     <view class="map-right"><button class="floating compass" @click="recordMap?.fit()"><text>▲</text><text>北</text></button><view class="vertical-tools"><button v-for="t in mapTools" :key="t.name" @click="mapTool(t.name)"><Icon :name="t.icon" :size="24" :color="t.name==='叠加'?'#00be7e':'#333'"/><text>{{t.name}}</text></button></view><button class="floating" aria-label="定位" @click="locate"><Icon name="target" :size="28"/></button><view class="zoom-stack"><button aria-label="放大" @click="recordMap?.zoom(1)"><text class="zoom-plus">＋</text></button><button aria-label="缩小" @click="recordMap?.zoom(-1)"><text class="zoom-plus">－</text></button></view></view>
     <button v-if="page==='record'" class="create-route floating" @click="startPlan"><Icon name="edit"/> 创建线路</button><view v-else class="plan-hint">点击地图添加途经点 · 仅直线规划，不提供道路寻路</view>
    </view>
    <view class="record-panel" v-if="page==='record'"><view v-if="recordState!=='idle'" class="record-stats"><view><text>{{ recordDistance.toFixed(2) }}</text><text>公里</text></view><view><text>{{ durationLabel(recordSeconds) }}</text><text>{{recordState==='paused'?'已暂停':'记录中'}}</text></view><view><text>{{ recordPoints }}</text><text>GPS 点</text></view></view><view v-else class="record-indicators"><button @click="sheet='tracks'"><Icon name="route" :size="28"/></button><button @click="unavailable('运动数据','开始 GPS 记录后显示真实距离与时间，不生成模拟运动数据。')"><Icon name="chart" :size="28"/></button><button @click="unavailable('心率','未连接心率设备。H5 不提供虚构的心率读数。')"><Icon name="heart" :size="28"/></button></view>
-    <view class="record-buttons"><button class="activity-button" @click="sheet='activity'"><Icon name="walk"/> {{ activity }} ▾</button><button v-if="recordState==='idle'" class="start-button" @click="startRecord">开始</button><template v-else><button class="start-button" @click="toggleRecord">{{recordState==='paused'?'继续':'暂停'}}</button><button class="end-button" @click="finishRecord">结束</button></template></view><text v-if="locationError" class="location-error">{{locationError}}</text><text v-if="following" class="following-hint">参考：{{current.title}} · 非实时道路导航</text>
+    <view class="record-buttons"><button class="activity-button" @click="sheet='activity'"><Icon name="walk"/> {{ activity }} ▾</button><button v-if="recordState==='idle'" class="start-button" @click="startRecord">开始</button><template v-else><button class="start-button" @click="toggleRecord">{{recordState==='paused'?'继续':'暂停'}}</button><button class="end-button" @click="finishRecord">结束</button></template></view><text v-if="locationError" class="location-error">{{locationError}}</text><text v-if="following" class="following-hint">参考：{{current.title}} · 数据首点不保证为入口；未经实走，不可作为唯一户外导航工具。偏航 &gt;60 m 连续3点且15秒提醒，&lt;40 m恢复；仅参考，非语音/道路导航。刷新/断电未保存记录会丢失。</text><text v-if="following&&geometry!=='ready'" class="location-error">{{geometry==='loading'?'参考轨迹加载中，暂不判断偏航':geometryError+'；暂不判断偏航，请重新选择参考轨迹重试'}}</text><text v-if="deviation" class="location-error" role="status">偏离参考轨迹超过60米，请自行核实位置与通行条件。</text>
    </view>
    <view v-else class="record-panel plan-panel"><view class="cell"><text>{{planPoints.length}} 个途经点 · {{metrics([planPoints]).distance.toFixed(2)}} km</text><button @click="planPoints.pop()">撤销</button></view><input v-model="planTitle" placeholder="线路名称" class="name-input"/><button class="primary" @click="savePlan">保存本地规划</button></view>
   </view>
@@ -97,7 +97,7 @@
   <template v-if="page==='library'||page==='favorites'||page==='history'">
    <view v-if="page==='library'" class="tabs"><button :class="{active:libraryTab==='local'}" @click="libraryTab='local'">本地({{localRoutes.length}})</button><button :class="{active:libraryTab==='cloud'}" @click="libraryTab='cloud'">云端(未连接)</button></view>
    <scroll-view scroll-y class="page-scroll"><view v-if="page!=='library'&&catalogState!=='ready'" class="info-strip">{{ catalogState==='loading'?'正在载入路线目录，收藏与浏览记录可能还不完整…':'路线目录加载失败，收藏与浏览记录可能不完整' }}<button @click="retryCatalog">重试</button></view><template v-if="libraryTab==='local'||page!=='library'"><template v-if="page==='library'"><button class="library-entry" @click="importFile"><Icon name="folder" :size="30" color="#00be7d"/><view><text>导入的轨迹</text><text class="muted">GPX 文件导入</text></view><text>＋</text></button><button class="library-entry" @click="startPlan"><Icon name="edit" :size="30" color="#00be7d"/><view><text>线路规划</text><text class="muted">通过地图点击创建本地路线</text></view><text>›</text></button><view class="section-bar"></view><view class="field-label">记录与导入 · {{localRoutes.length}}条</view></template>
-    <RouteCard v-for="r in libraryRoutes" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" /><view v-if="!libraryRoutes.length" class="empty"><Icon name="route" :size="54" color="#ccc"/><text>暂无{{page==='favorites'?'收藏':page==='history'?'浏览记录':'轨迹'}}</text><text class="muted">开始记录你的山野之旅吧～</text><button class="primary" @click="go('record')">开始记录</button><button v-if="page==='library'" @click="importFile">导入 GPX</button></view>
+    <RouteCard v-for="r in libraryRoutes" :key="r.id" :route="r" :tiles="tiles" @open="openRoute" @delete="deleteLocal" /><view v-if="!libraryRoutes.length" class="empty"><Icon name="route" :size="54" color="#ccc"/><text>暂无{{page==='favorites'?'收藏':page==='history'?'浏览记录':'轨迹'}}</text><text class="muted">开始记录你的山野之旅吧～</text><button class="primary" @click="go('record')">开始记录</button><button v-if="page==='library'" @click="importFile">导入 GPX</button></view>
    </template><view v-else class="empty"><Icon name="cloud" :size="45"/><text>未连接云端服务</text><text class="muted">本地数据不会上传到六只脚账户</text></view></scroll-view>
   </template>
 
@@ -106,24 +106,25 @@
   <scroll-view v-if="page==='circles'" scroll-y class="page-scroll"><view class="tabs"><button class="active">我的</button><button @click="unavailable('全部圈子','没有官方社交接口，不能查询或加入原版圈子。')">全部</button></view><view class="info-strip">仅本机保存的研究用圈子，无在线成员或消息同步</view><view class="group-form"><input v-model="groupName" placeholder="圈子名称（本地）" maxlength="30"/><button class="primary" @click="createGroup">创建圈子</button></view><view v-for="g in groups" :key="g" class="cell"><Icon name="group"/><text>{{g}}</text><button @click="removeGroup(g)">删除</button></view></scroll-view>
   <scroll-view v-if="page==='data'" scroll-y class="page-scroll"><view class="field-label">公开版内置数据</view><view class="source-card"><text>{{ catalogFull?'北京 OSM 提取快照':'仓库内的示例子集' }} · {{ officialOsmRoutes.length }} 条 OpenStreetMap 路线（其中 {{ wayCount }} 条为命名路径片段）+ {{ demoRoutes.length }} 条数学合成示例</text><text>来源：{{ catalogSource || 'OpenStreetMap' }}</text><text v-if="catalogNotice">{{ catalogNotice }}</text><text>署名：© OpenStreetMap 贡献者 · 许可 ODbL 1.0（可再分发，但必须保留署名与许可）</text><text>{{ catalogElevationSource || '本目录不含海拔数据' }}</text><text>共 {{ shardCount() }} 个几何分片，打开某条路线时才下载它所在的分片。</text><text>注意：命名路径片段是 OpenStreetMap 中带名字的道路/步道几何，不等于一条完整徒步行程，也没有起点终点语义；全部轨迹未经实走验证，不可用于户外导航。</text><text>合成示例由程序按数学函数生成，不代表任何真实地点，同样不可导航。</text></view><view class="field-label">再分发与复现</view><view class="source-card"><text>路线目录与几何分片是普通公开文件（index.json 与 routes/shard-NNN.json）。任何人可以直接下载并依 ODbL 1.0 再分发，但必须保留署名与许可，也不得暗示官方认可。</text><text>本应用不包含六只脚的路线、图片或设备信息。</text></view><button class="cell" @click="openDoc(licenseUrl)"><text>ODbL 1.0 许可证全文</text><text class="muted">opendatacommons.org ›</text></button><button class="cell" @click="openDoc('https://www.openstreetmap.org/copyright')"><text>OpenStreetMap 版权与署名</text><text class="muted">openstreetmap.org ›</text></button><button class="cell" @click="copyText(indexUrl())"><text>复制目录地址（机器可读）</text><text class="muted">{{ indexUrl() }}</text></button><button class="cell" @click="copyText(manifestUrl())"><text>复制数据清单地址</text><text class="muted">{{ manifestUrl() }}</text></button><view class="source-card"><text>复现：下载 Geofabrik 的北京 OSM 抽取（ODbL 许可），运行 scripts/build-osm-catalog.mjs --all --elevation 生成目录，再用 scripts/prepare-catalog.mjs --full 安装进应用；scripts/verify-catalog.mjs 会逐条校验索引与分片是否一致。</text><text>海拔缓存与地形图块仅用于本机重建，不随应用发布；本页不是六只脚官方客户端。</text></view></scroll-view>
 
-  <scroll-view v-if="page==='settings'" scroll-y class="page-scroll"><view class="field-label">地图与记录</view><view class="cell"><text>显示具体路线的缩放级别</text><button aria-label="降低路线缩放阈值" role="button" tabindex="0" :disabled="routeThreshold<=8" :aria-disabled="routeThreshold<=8" @keydown.enter.prevent="routeThreshold>8&&setRouteThreshold(routeThreshold-1)" @keydown.space.prevent="routeThreshold>8&&setRouteThreshold(routeThreshold-1)" @click="setRouteThreshold(routeThreshold-1)">−</button><text data-route-threshold>{{routeThreshold}}</text><button aria-label="提高路线缩放阈值" role="button" tabindex="0" :disabled="routeThreshold>=18" :aria-disabled="routeThreshold>=18" @keydown.enter.prevent="routeThreshold<18&&setRouteThreshold(routeThreshold+1)" @keydown.space.prevent="routeThreshold<18&&setRouteThreshold(routeThreshold+1)" @click="setRouteThreshold(routeThreshold+1)">＋</button></view><view class="field-label">8–18，默认12；值越低越早显示具体路线。zoom 是缩放级别，不是左下比例尺的距离单位。推荐依据元数据与视野，不是人气或安全评级。</view><view class="cell"><text>在线 OpenStreetMap 底图</text><switch :checked="tiles" color="#00be7d" @change="setTiles(eventValue($event))"/></view><button class="cell" @click="requestWake"><text>保持屏幕唤醒</text><text class="muted">{{wakeActive?'已开启':'点击开启'}} ›</text></button><button class="cell" @click="sheet='offline'"><text>离线资源</text><Icon name="chevron" :size="16"/></button><view class="field-label">数据</view><button class="cell" @click="importFile">导入 GPX <Icon name="upload" :size="20"/></button><button class="cell" @click="sheet='about'">数据来源与功能边界 <Icon name="chevron" :size="16"/></button><button class="cell" @click="go('data')">数据说明与许可 <Icon name="chevron" :size="16"/></button><button class="cell danger" @click="clearLocal">清除本地研究数据</button><view class="source-card"><text>仅本地研究。位置和轨迹保存在浏览器，不发送到原版服务。在线底图请求会向 OpenStreetMap 暴露所浏览的地图区域。</text><text>H5 不能保证锁屏或后台持续 GPS；手机上定位需要 HTTPS。请勿把本版作为唯一户外导航工具。</text></view></scroll-view>
+  <scroll-view v-if="page==='settings'" scroll-y class="page-scroll"><view class="field-label">地图与记录</view><view class="field-label">比例尺显示 <text data-route-threshold>{{scaleLabel(routeThreshold)}}</text> 及更小时展示具体路线</view><view class="scale-options"><button v-for="v in SCALE_VALUES" :key="v" :aria-pressed="legacyZoom===undefined&&routeThreshold===v" role="button" tabindex="0" @keydown.enter.prevent="setRouteThreshold(v)" @keydown.space.prevent="setRouteThreshold(v)" @click="setRouteThreshold(v)">{{scaleLabel(v)}}</button></view><view v-if="legacyZoom!==undefined" class="info-strip">保留旧版 zoom {{legacyZoom}} 兼容模式，未静默迁移。点击上方公制值后改用比例尺模式。</view><view class="field-label">默认2 km。这是左下约100 CSS px比例尺的圆整显示值，不是整屏跨度或GPS距离；等于阈值也显示路线。推荐依据元数据与视野，不是人气或安全评级。</view><view class="cell"><text>在线 OpenStreetMap 底图</text><switch :checked="tiles" color="#00be7d" @change="setTiles(eventValue($event))"/></view><button class="cell" @click="requestWake"><text>保持屏幕唤醒</text><text class="muted">{{wakeActive?'已开启':'点击开启'}} ›</text></button><button class="cell" @click="sheet='offline'"><text>离线资源</text><Icon name="chevron" :size="16"/></button><view class="field-label">数据</view><button class="cell" @click="importFile">导入 GPX <Icon name="upload" :size="20"/></button><button class="cell" @click="sheet='about'">数据来源与功能边界 <Icon name="chevron" :size="16"/></button><button class="cell" @click="go('data')">数据说明与许可 <Icon name="chevron" :size="16"/></button><button class="cell danger" @click="clearLocal">清除本地研究数据</button><view class="source-card"><text>仅本地研究。位置和轨迹保存在浏览器，不发送到原版服务。在线底图（含本地卡片）由设备直连 OpenFreeMap（可能经 Cloudflare），会暴露卡片地理区域。私有轨迹文件与 GPS 逐点绝不发给 Vias 或第三方；可随时关闭在线底图。不保存地图截图或持久缓存资源。</text><text>H5 不能保证锁屏或后台持续 GPS；手机上定位需要 HTTPS。请勿把本版作为唯一户外导航工具。</text></view></scroll-view>
 
   <view v-if="page==='home'||page==='profile'" class="bottom-tabs"><button :class="{selected:page==='home'}" @click="tab('home')"><Icon name="home" :color="page==='home'?'#242330':'#bebdc2'" :size="25"/><text>首页</text></button><button class="record-tab" @click="tab('record')"><view><Icon name="play" color="white" :size="22"/></view><text>记录</text></button><button :class="{selected:page==='profile'}" @click="tab('profile')"><Icon name="user" :color="page==='profile'?'#242330':'#bebdc2'" :size="25"/><text>我的</text></button></view>
 
   <view v-if="sheet" class="sheet-mask" @click="sheet=''"><view class="sheet" @click.stop><view class="sheet-head"><text>{{sheetTitle}}</text><button aria-label="关闭弹窗" @click="sheet=''"><Icon name="close" :size="22"/></button></view><scroll-view scroll-y class="sheet-content">
    <template v-if="sheet==='about'"><view class="sheet-copy"><text>景行 Vias · 户外轨迹研究</text><text>{{research?'当前为私有本地研究模式，内置数据来自官方 GPX 导出；公开可见不等于可以再次公开分发。':'公开版内置的北京 OpenStreetMap 路线快照（23 个路线关系 + 命名路径片段）与 2 条数学合成示例；路线缩略图由程序按几何绘制。不含六只脚真实路线、原版图片或任何设备信息。所有轨迹均未经实走验证，不可用于户外导航。'}}</text><text>实现：本地检索筛选、交互地图、海拔图、收藏与浏览历史、GPX 导入、GPX/KML 导出、本地规划、前台 GPS 记录与本地备注。</text><text>未实现：官方账户、全站路线搜索、社交、支付会员、商业卫星图、道路寻路、后台轨迹、蓝牙设备、离线地图下载。</text><text>{{research?'这是研究界面，不是六只脚官方客户端。图片与轨迹不得随本项目公开发布。地图是 OpenStreetMap，与原版高德卫星图不同。':'路线数据 © OpenStreetMap 贡献者（ODbL 1.0，https://opendatacommons.org/licenses/odbl/1-0/），按关系/路径 ID 可溯源，可再分发但必须保留署名与许可；导出文件会写入同样的作者、来源与许可信息。海拔为公开地形瓦片（terrarium，底层为 SRTM 等公有领域高程数据，约 30 m 分辨率）采样插值，非实测；爬升与下降未经平滑，坡度陡时可能偏大。地图瓦片 © OpenStreetMap 贡献者（https://www.openstreetmap.org/copyright）。详细的数据说明、许可与复现方式见“数据说明与许可”页。本页不是六只脚官方客户端。'}}</text></view></template>
-   <template v-else-if="sheet==='routeMenu'"><button class="cell" @click="followRoute">导航至起终点 <Icon name="pin"/></button><button class="cell" @click="sheet='offline'">离线地图 <Icon name="cloud"/></button><button class="cell" @click="sheet='export'">导出轨迹文件 <Icon name="download"/></button><button v-if="current.id.startsWith('local-')" class="cell danger" @click="deleteCurrent">删除本地轨迹</button></template>
+   <template v-else-if="sheet==='routeMenu'"><button class="cell" @click="navigateRoute">导航至数据首点 / 前台循迹 <Icon name="pin"/></button><button class="cell" @click="sheet='offline'">离线地图 <Icon name="cloud"/></button><button class="cell" @click="sheet='export'">导出轨迹文件 <Icon name="download"/></button><button v-if="current.id.startsWith('local-')" class="cell danger" @click="deleteCurrent">删除本地轨迹</button></template>
+   <template v-else-if="sheet==='navigation'"><view class="sheet-copy"><text>{{navigationText}}</text><text>数据首点：{{navigationStart?.lat}}, {{navigationStart?.lon}}。起点只是数据首点，不保证为可通行入口；轨迹未经实走，不可作为唯一户外导航工具。</text><text>近距确认会开始前台持续定位并在本机记录，不上传轨迹或GPS点；误差仅供参考。后台自动暂停，需手动继续；刷新/断电未保存会丢失。</text></view><button v-if="navigationKind==='near'||navigationKind==='uncertain'" class="primary" @click="confirmNear">确认前台循迹并记录</button><button v-if="navigationKind==='far'||navigationKind==='uncertain'" class="cell" @click="confirmFar">确认交给系统地图导航至数据首点</button><button class="cell" @click="navigateRoute">重新定位</button><button v-if="navigationStart" class="cell" @click="copyText(navigationStart.lat+','+navigationStart.lon)">复制目标坐标（无法唤起地图时使用）</button><view class="info-strip">只传目的地坐标，不传整条轨迹或当前位置；浏览器无法确认是否打开地图APP，不提供道路寻路或安全保证。</view></template>
    <template v-else-if="sheet==='export'"><button class="export-option" @click="download('gpx')"><text>GPX格式</text><text>保留轨迹分段、海拔、时间与标注点名称</text></button><button class="export-option" @click="download('kml-track')"><text>KML格式（轨迹）</text><text>含海拔与时间（本目录路线不含时间，导出时省略）</text></button><button class="export-option" @click="download('kml-path')"><text>KML格式（路径）</text><text>仅含经纬度和海拔，兼容性最好</text></button><view class="info-strip">仅导出当前路线，不访问原版私有接口</view></template>
    <template v-else-if="sheet==='layers'"><view class="layer-options"><button :class="{chosen:tiles}" @click="setTiles(true)"><view class="tile-thumb">OSM</view><text>街道地图</text></button><button :class="{chosen:!tiles}" @click="setTiles(false)"><view class="tile-thumb plain">⌁</view><text>仅轨迹</text></button><button @click="unavailable('商业地图','原版高德、天地图及星图服务需各自授权/密钥，本版不复用原版密钥。')"><view class="tile-thumb unavailable">＋</view><text>其他地图</text></button></view><button class="primary" @click="sheet='offline'">离线地图说明</button></template>
    <template v-else-if="sheet==='offline'"><view class="sheet-copy"><text>轨迹可本地保存，离线底图尚未实现。</text><text>本版不批量缓存 OpenStreetMap 瓦片。收藏或导出 GPX 不等于已下载离线地图。断网时可关闭在线底图查看轨迹形状，但无地形信息。</text></view><button class="primary" @click="download('gpx')">导出当前 GPX</button></template>
    <template v-else-if="sheet==='notes'"><view class="info-strip">仅保存本地备注，不向原版发布评论</view><textarea v-model="noteDraft" maxlength="1000" placeholder="写下路线备注…" class="note-input"/><button class="primary" @click="saveNote">保存本地备注</button></template>
    <template v-else-if="['activity','activityFilter','region','distanceFilter'].includes(sheet)"><button v-for="option in sheetOptions" :key="option" class="cell" @click="selectOption(option)">{{option}} <Icon name="chevron" :size="17"/></button></template>
-   <template v-else-if="sheet==='tracks'"><button class="cell" @click="following=!following;sheet=''">{{following?'隐藏参考轨迹':'显示当前参考轨迹'}}<Icon name="eye"/></button><button v-for="r in routes.slice(0,20)" :key="r.id" class="cell" @click="current=r;following=true;sheet=''">{{r.title}}<Icon name="route" :size="20"/></button><view class="list-end">仅列出前 20 条，共 {{ routes.length }} 条</view></template>
+   <template v-else-if="sheet==='tracks'"><button class="cell" @click="toggleReference">{{following?'隐藏参考轨迹':'显示当前参考轨迹'}}<Icon name="eye"/></button><button v-for="r in routes.slice(0,20)" :key="r.id" class="cell" @click="selectReference(r)">{{r.title}}<Icon name="route" :size="20"/></button><view class="list-end">仅列出前 20 条，共 {{ routes.length }} 条</view></template>
   </scroll-view></view></view>
  </view>
 </template>
 <script setup lang="ts">
-import {ref,computed,watch,onMounted,onBeforeUnmount,type Ref} from 'vue';
+import {ref,computed,watch,onMounted,onBeforeUnmount,nextTick,type Ref} from 'vue';
 // #ifdef H5
 import HomeMap from '../../components/HomeMap.vue';
 // #endif
@@ -132,11 +133,11 @@ import DetailSheet from '../../components/DetailSheet.vue';
 import ElevationChart from '../../components/ElevationChart.vue';import TrackMap from '../../components/TrackMap.vue';import Icon from '../../components/Icon.vue';
 import rawRoutes from 'virtual:vias-catalog';
 import classicList from '../../core/classic-routes.json';
-import {routeZoom} from '../../core/map-display';
+import {SCALE_VALUES,scaleLabel,scaleThreshold,scalePreference,firstPoint,navigationDecision,destinationUri,validFix,DeviationMonitor,localDeletion,type Fix} from '../../core/map-ux';
 const research=__VIAS_RESEARCH__;
 const prefix=import.meta.env.BASE_URL || '/';
 const asset=(name:string)=>prefix+(research?`static/research/${name}.jpg`:`static/demo/${name}.png`);
-function routeOrigin(r:Route){return research?'六只脚':r.id.startsWith('osm-')?'OpenStreetMap':'Vias 示例';}
+function routeOrigin(r:Route){return research?'六只脚':r.id.startsWith('osm-')?'OpenStreetMap':r.id.startsWith('local-')?'本机私有':'Vias 示例';}
 import {type Route,type Point,parseGpx,exportGpx,exportKml,exportKmlTrack,kmSplits,durationLabel,distance,metrics,makeRoute,Recorder} from '../../core/track';
 import {catalogError,catalogElevationSource,catalogFull,catalogNotice,catalogSource,catalogState,isGeometryLoaded,loadGeometry,loadIndex,shardCount,osmRoutes as osmCatalogRoutes} from '../../core/osm-catalog';
 type Page='home'|'routes'|'search'|'detail'|'record'|'plan'|'profile'|'library'|'favorites'|'history'|'destinations'|'photos'|'circles'|'settings'|'data';
@@ -191,7 +192,7 @@ function openRoute(r:Route){geometryEpoch++;current.value=r;const next=[r.id,...
 let geometryEpoch=0;
 async function ensureGeometry(route:Route){
  const token=++geometryEpoch;
- if(isGeometryLoaded(route)){geometry.value='ready';return true;}
+ if(isGeometryLoaded(route)){geometry.value='ready';geometryError.value='';return true;}
  geometry.value='loading';geometryError.value='';
  try{await loadGeometry(route);if(token!==geometryEpoch||current.value.id!==route.id)return false;geometry.value='ready';return true;}
  catch(error){if(token!==geometryEpoch||current.value.id!==route.id)return false;geometry.value='error';geometryError.value=error instanceof Error?error.message:'轨迹数据加载失败';return false;}
@@ -223,17 +224,19 @@ const hasTime=computed(()=>current.value.segments.some(s=>s.some(p=>!!p.time)));
 const currentStats=computed(()=>[[hasTime.value?durationLabel(current.value.duration):'—',hasTime.value?'总时间':'用时未记录'],[current.value.maxSpeed>0?current.value.maxSpeed.toFixed(1):'—','最快速度(km/h)'],[current.value.duration?(current.value.distance/(current.value.duration/3600)).toFixed(1):'—','平均速度(km/h)'],[String(current.value.maxEle),'最高海拔(米)'],[String(current.value.ascent),'累计爬升(米)'],[String(current.value.descent),'累计下降(米)']]);
 const routeDates=computed(()=>{const pts=current.value.segments.flat();const start=pts[0]?.time,end=pts[pts.length-1]?.time;const format=(t:string)=>{const d=new Date(t);return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};return start&&end?format(start)+' - '+format(end):'未包含记录时间';});
 const splits=computed(()=>kmSplits(current.value.segments));
-const sheetTitles:Record<string,string>={about:'关于本地研究',routeMenu:'路线操作',export:'导出轨迹文件',layers:'选择地图',offline:'离线资源',notes:'本地路线备注',activity:'运动类型',activityFilter:'类型',region:'地区',distanceFilter:'里程筛选',tracks:'参考轨迹'};const sheetTitle=computed(()=>sheetTitles[sheet.value]||'');const sheetOptions=computed(()=>sheet.value==='activity'?['徒步','登山','骑行','跑步','自驾']:sheet.value==='activityFilter'?['不限','徒步','登山','骑行','跑步','自驾']:sheet.value==='region'?['不限',...destinations.value.map(d=>d.place)]:['不限','10公里以下','10–30公里','30公里以上']);
+const sheetTitles:Record<string,string>={about:'关于本地研究',routeMenu:'路线操作',navigation:'导航至数据首点',export:'导出轨迹文件',layers:'选择地图',offline:'离线资源',notes:'本地路线备注',activity:'运动类型',activityFilter:'类型',region:'地区',distanceFilter:'里程筛选',tracks:'参考轨迹'};const sheetTitle=computed(()=>sheetTitles[sheet.value]||'');const sheetOptions=computed(()=>sheet.value==='activity'?['徒步','登山','骑行','跑步','自驾']:sheet.value==='activityFilter'?['不限','徒步','登山','骑行','跑步','自驾']:sheet.value==='region'?['不限',...destinations.value.map(d=>d.place)]:['不限','10公里以下','10–30公里','30公里以上']);
 watch(sheet,v=>{if(v==='notes')noteDraft.value=notes.value[current.value.id]||'';});
 function selectOption(v:string){if(sheet.value==='activity')activity.value=v;else if(sheet.value==='activityFilter')activityFilter.value=v;else if(sheet.value==='region')region.value=v;else distanceFilter.value=v;sheet.value='';}
-const routeThreshold=ref(routeZoom(readStore('routeZoom',12)));
-function setRouteThreshold(v:number){const value=routeZoom(v);if(saveStore('routeZoom',value))routeThreshold.value=value;}
-function setTiles(v:boolean){if(saveStore('tiles',v))tiles.value=v;}
+const storedScale=readStore<unknown>('routeScale',null),oldZoom=readStore<unknown>('routeZoom',null);
+const preference=scalePreference(storedScale,oldZoom);
+const routeThreshold=ref(preference.threshold),legacyZoom=ref<number|undefined>(preference.legacyZoom);
+function setRouteThreshold(v:number){const value=scaleThreshold(v);if(saveStore('routeScale',value)){routeThreshold.value=value;legacyZoom.value=undefined;}}
+function setTiles(v:boolean){if(v&&!tiles.value){uni.showModal({title:'启用在线底图？',content:'可见卡片（含本地轨迹）的地理范围会由设备直连 OpenFreeMap，可能经 Cloudflare。私有轨迹文件与 GPS 逐点不上传；不保存截图或持久缓存资源，可随时关闭。',success:r=>{if(r.confirm&&saveStore('tiles',true))tiles.value=true;}});}else if(saveStore('tiles',v))tiles.value=v;}
 function saveNote(){const next={...notes.value,[current.value.id]:noteDraft.value};if(saveStore('notes',next)){notes.value=next;sheet.value='';toast('已保存本地备注');}}
 function createGroup(){const n=groupName.value.trim();if(!n)return toast('请输入名称');if(groups.value.includes(n))return toast('名称已存在');const next=[...groups.value,n];if(saveStore('groups',next)){groups.value=next;groupName.value='';}}
 function removeGroup(name:string){uni.showModal({title:'删除本地圈子？',content:name,success:r=>{if(r.confirm){const next=groups.value.filter(g=>g!==name);if(saveStore('groups',next))groups.value=next;}}});}
 function previewPhoto(i:number){uni.previewImage({urls:photos,current:photos[i]});}
-function profileAction(p:string){if(['offline','layers'].includes(p))sheet.value=p;else if(p==='stats')go('library');else if(p==='following'){following.value=true;go('record');}else go(p as Page);}
+function profileAction(p:string){if(['offline','layers'].includes(p))sheet.value=p;else if(p==='stats')go('library');else if(p==='following'){followRoute();}else go(p as Page);}
 function mapTool(name:string){if(recordState.value!=='idle'&&['组队','设置'].includes(name))return toast('请先结束记录，再离开记录页面');if(name==='图层')sheet.value='layers';else if(name==='设置')go('settings');else if(name==='叠加')sheet.value='tracks';else if(name==='组队')go('circles');else unavailable('轨迹照片','照片关联与相机权限尚未实现。不会读取你的相册或自动上传照片。');}
 function persistRoute(r:Route){const next=[r,...localRoutes.value];if(saveStore('routes',next)){localRoutes.value=next;return true;}return false;}
 function importXml(xml:string){try{const r=parseGpx(xml);if(persistRoute(r)){openRoute(r);toast('GPX 已导入本机');}}catch(e){unavailable('导入失败',e instanceof Error?e.message:'文件读取失败');}}
@@ -256,13 +259,40 @@ const url=URL.createObjectURL(new Blob([content],{type:format==='gpx'?'applicati
 const fs=uni.getFileSystemManager();const path=wx.env.USER_DATA_PATH+'/'+filename;fs.writeFile({filePath:path,data:content,encoding:'utf8',success:()=>{wx.shareFileMessage({filePath:path,fileName:filename,fail:()=>toast('分享已取消或不可用')});},fail:()=>toast('写入文件失败')});
 // #endif
 }
-function deleteCurrent(){uni.showModal({title:'删除这条本地轨迹？',content:'不会影响原版数据，删除后不能恢复。',success:r=>{if(r.confirm){const next=localRoutes.value.filter(x=>x.id!==current.value.id);if(saveStore('routes',next)){localRoutes.value=next;sheet.value='';back();}}}});}
+function deleteCurrent(){deleteLocal(current.value);}
+function deleteLocal(route:Route){if(!localDeletion(route.id,localRoutes.value,favorites.value,history.value,notes.value))return;uni.showModal({title:'删除这条本地轨迹？',content:route.title+' · 仅本机，删除后不能恢复。',success:r=>{if(!r.confirm)return;const next=localDeletion(route.id,localRoutes.value,favorites.value,history.value,notes.value);if(!next)return;const old={routes:localRoutes.value,favorites:favorites.value,history:history.value,notes:notes.value};const written:string[]=[];try{for(const key of ['favorites','history','notes','routes'] as const){uni.setStorageSync('vias:'+key,JSON.stringify(next[key]));written.push(key);}}catch{for(const key of written){try{uni.setStorageSync('vias:'+key,JSON.stringify(old[key as keyof typeof old]));}catch{}}toast('删除未完成：存储失败，轨迹仍保留');return;}localRoutes.value=next.routes;favorites.value=next.favorites;history.value=next.history;notes.value=next.notes;if(page.value==='detail'&&current.value.id===route.id){sheet.value='';back();}}});}
 function clearLocal(){uni.showModal({title:'清除本地研究数据？',content:'将删除本地轨迹、收藏、历史、备注和圈子；内置官方导出路线不删除。建议先逐条导出。',success:r=>{if(r.confirm){for(const k of ['routes','favorites','history','notes','groups'])uni.removeStorageSync('vias:'+k);localRoutes.value=[];favorites.value=[];history.value=[];notes.value={};groups.value=[];toast('已清除本地数据');}}});}
+async function selectReference(route:Route){current.value=route;following.value=true;sheet.value='';monitor.reset();deviation.value=false;if(await ensureGeometry(route)){await nextTick();recordMap.value?.fit();}}
+function toggleReference(){sheet.value='';if(following.value){following.value=false;return;}selectReference(current.value);}
 function followRoute(){if(!isGeometryLoaded(current.value)){ensureGeometry(current.value).then(ok=>{if(ok&&geometry.value==='ready')followRoute();});return;}following.value=true;sheet.value='';go('record');toast('参考轨迹已载入；不提供语音转向导航');}
+const navigationText=ref(''),navigationKind=ref(''),navigationStart=ref<Point>(),navigationFix=ref<Fix>();let navigationEpoch=0,navigationRoute='';
+function fixOf(p:GeolocationPosition):Fix{return {point:{lat:p.coords.latitude,lon:p.coords.longitude,ele:p.coords.altitude,time:new Date(p.timestamp).toISOString()},accuracy:p.coords.accuracy,timestamp:p.timestamp};}
+async function navigateRoute(){
+ if(recordState.value!=='idle')return toast('请先结束当前记录');
+ // #ifdef H5
+ const token=++navigationEpoch,route=current.value;navigationRoute=route.id;navigationKind.value='';navigationStart.value=undefined;navigationFix.value=undefined;navigationText.value='正在定位，尚未开始记录…';sheet.value='navigation';
+ if(!await ensureGeometry(route)||token!==navigationEpoch||current.value.id!==route.id||sheet.value!=='navigation')return;
+ navigationStart.value=firstPoint(route.segments);if(!navigationStart.value){navigationText.value='没有有效数据首点，无法导航';return;}
+ if(!window.isSecureContext||!navigator.geolocation){navigationText.value='当前环境不支持安全定位，未启动记录或离站';return;}
+ navigator.geolocation.getCurrentPosition(p=>{if(token!==navigationEpoch||current.value.id!==route.id||sheet.value!=='navigation'||document.hidden)return;const f=fixOf(p),decision=navigationDecision(f,navigationStart.value!);navigationFix.value=f;navigationKind.value=decision.kind;navigationText.value=decision.kind==='invalid'?'定位精度须≤50米且时间≤15秒，请重试；未分流或开始记录':`距数据首点 ${decision.meters<1000?Math.round(decision.meters)+' m':(decision.meters/1000).toFixed(2)+' km'}，GPS 精度 ±${Math.round(f.accuracy)} m。${decision.kind==='uncertain'?'处于200米边界不确定范围，请重试或明确选择。':decision.kind==='near'?'近距（≤200米），确认后前台循迹。':'超过200米，确认后交系统地图。'}`;},e=>{if(token===navigationEpoch&&sheet.value==='navigation'){navigationKind.value='';navigationText.value='定位失败/拒绝/超时：'+e.message+'；未启动记录或离站，请重试';}},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+ // #endif
+ // #ifdef MP-WEIXIN
+ unavailable('小程序导航待验证','未启用小程序定位或系统地图导航。');
+ // #endif
+}
+function confirmNear(){if(!navigationFix.value||!validFix(navigationFix.value)||navigationRoute!==current.value.id){navigationKind.value='';navigationText.value='位置已过期或精度不足，请重新定位';return;}if(!['near','uncertain'].includes(navigationKind.value))return;following.value=true;go('record');beginRecord(navigationFix.value);}
+function confirmFar(){if(!navigationFix.value||!validFix(navigationFix.value)||navigationRoute!==current.value.id){navigationKind.value='';navigationText.value='位置已过期，请重新定位';return;}if(!navigationStart.value||!['far','uncertain'].includes(navigationKind.value))return;
+ // #ifdef H5
+ const link=document.createElement('a');link.href=destinationUri(navigationStart.value,/iPhone|iPad|Macintosh/.test(navigator.userAgent));link.rel='noopener';link.target='_blank';link.click();navigationText.value+=' 已请求系统地图接力，无法确认APP已打开；失败时请复制坐标。';
+ // #endif
+}
 function startPlan(){if(recordState.value!=='idle')return toast('请先结束当前记录');planPoints.value=[];planTitle.value='我的规划线路';go('plan');}
 function addPlanPoint(p:Point){planPoints.value.push(p);}
 function savePlan(){if(planPoints.value.length<2)return toast('请至少添加两个途经点');if(!planTitle.value.trim())return toast('请输入线路名称');const r=makeRoute(planTitle.value.trim(),[[...planPoints.value]]);if(persistRoute(r)){back();openRoute(r);}}
-const recorder=new Recorder();const recordState=ref(recorder.state);const recordSeconds=ref(0);const recorded=ref<Point[][]>([]);const recordPoints=computed(()=>recorded.value.reduce((n,s)=>n+s.length,0));const recordDistance=computed(()=>metrics(recorded.value).distance);const mapSegments=computed(()=>page.value==='plan'?[planPoints.value]:recordState.value!=='idle'?recorded.value:following.value?current.value.segments:[]);
+const recorder=new Recorder();const recordState=ref(recorder.state);const recordSeconds=ref(0);const recorded=ref<Point[][]>([]);const recordPoints=computed(()=>recorded.value.reduce((n,s)=>n+s.length,0));const recordDistance=computed(()=>metrics(recorded.value).distance);const mapSegments=computed(()=>page.value==='plan'?[planPoints.value]:[...(following.value&&geometry.value==='ready'?current.value.segments:[]),...recorded.value]);
+const deviation=ref(false),monitor=new DeviationMonitor();
+watch([following,()=>current.value.id],()=>{monitor.reset();deviation.value=false;});
+let gpsGap=false;
 let watchId:number|undefined,timer:ReturnType<typeof setInterval>|undefined;let locationGeneration=0;const wakeActive=ref(false);let wake:any;
 async function requestWake(){
 // #ifdef H5
@@ -276,32 +306,40 @@ function receivePosition(p:Point){position.value=p;locationError.value='';if(rec
 function locationFailure(message:string){locationError.value=message;}
 function locate(){
 // #ifdef H5
-if(!window.isSecureContext)return unavailable('定位需要安全连接','请在这台 Mac 打开 http://localhost:8776；手机访问需配置 HTTPS。HTTP 的 Tailscale IP 可以预览，但浏览器通常不允许定位。');if(!navigator.geolocation)return toast('浏览器不支持定位');navigator.geolocation.getCurrentPosition(p=>{receivePosition({lat:p.coords.latitude,lon:p.coords.longitude,ele:p.coords.altitude,time:new Date(p.timestamp).toISOString()});recordMap.value?.locate();},e=>{locationFailure(e.message);toast('定位失败，请检查位置权限');},{enableHighAccuracy:true,timeout:15000});
+if(!window.isSecureContext)return unavailable('定位需要安全连接','请在这台 Mac 打开 http://localhost:8776；手机访问需配置 HTTPS。HTTP 的 Tailscale IP 可以预览，但浏览器通常不允许定位。');if(!navigator.geolocation)return toast('浏览器不支持定位');navigator.geolocation.getCurrentPosition(p=>{const fix=fixOf(p);if(!validFix(fix))return locationFailure('GPS精度须≤50米、时间≤15秒，请重试');receivePosition(fix.point);recordMap.value?.locate();},e=>{locationFailure(e.message);toast('定位失败，请检查位置权限');},{enableHighAccuracy:true,timeout:15000});
 // #endif
 // #ifdef MP-WEIXIN
-uni.getLocation({type:'wgs84',success:p=>{receivePosition({lat:p.latitude,lon:p.longitude,ele:p.altitude,time:new Date().toISOString()});},fail:()=>locationFailure('定位失败，请检查位置权限与 AppID')});
+unavailable('小程序定位待验证','当前未启用小程序定位、定位排序或 GPS 记录。');
 // #endif
 }
-function startRecord(){
-if(recorder.state!=='idle')return;
+function beginRecord(f:Fix){
 // #ifdef H5
-if(!window.isSecureContext)return unavailable('无法启动 GPS 记录','手机 HTTP 页面不能使用定位，请先配置 HTTPS。桌面请通过 localhost 打开并授予位置权限。');if(!navigator.geolocation)return unavailable('无法记录','当前浏览器不支持地理位置。');const generation=++locationGeneration;locationError.value='正在获取 GPS，尚未开始记录…';navigator.geolocation.getCurrentPosition(p=>{if(generation!==locationGeneration||page.value!=='record'||recorder.state!=='idle')return;if(p.coords.accuracy>100){locationFailure('未开始记录：定位精度超过 100 米，请移至开阔处后重试');return;}recorder.start();recordState.value=recorder.state;receivePosition({lat:p.coords.latitude,lon:p.coords.longitude,ele:p.coords.altitude,time:new Date(p.timestamp).toISOString()});watchId=navigator.geolocation.watchPosition(p=>{if(p.coords.accuracy>100){locationFailure('定位精度超过 100 米，暂不写入轨迹');return;}receivePosition({lat:p.coords.latitude,lon:p.coords.longitude,ele:p.coords.altitude,time:new Date(p.timestamp).toISOString()});},e=>locationFailure('GPS 中断：'+e.message),{enableHighAccuracy:true,maximumAge:0,timeout:20000});requestWake();},e=>locationFailure('未开始记录：'+e.message),{enableHighAccuracy:true,maximumAge:0,timeout:15000});
-// #endif
-// #ifdef MP-WEIXIN
-unavailable('小程序 GPS 记录待验证','小程序位置权限及持续记录尚未在开发者工具/真机验收，当前不启动模拟记录。');
+if(document.hidden||page.value!=='record'||!validFix(f))return locationFailure('未开始：GPS精度须≤50米、时间≤15秒且页面在前台');
+if(recorder.state==='idle')recorder.start();else if(recorder.state==='paused')recorder.resume();else return;
+recordState.value=recorder.state;monitor.reset();deviation.value=false;gpsGap=false;receivePosition(f.point);const generation=++locationGeneration;
+watchId=navigator.geolocation.watchPosition(p=>{if(generation!==locationGeneration||recorder.state!=='recording'||document.hidden)return;const fix=fixOf(p);if(!validFix(fix)){gpsGap=true;monitor.reset();deviation.value=false;return locationFailure('GPS精度差/过期，暂不写入或判断偏航');}if(gpsGap){recorder.pause();recorder.resume();gpsGap=false;}receivePosition(fix.point);if(following.value&&geometry.value==='ready'){const result=monitor.update(fix,current.value.segments);deviation.value=result.active;if(result.alert)toast('偏离参考轨迹超过60米，请自行核实');}},e=>{if(generation!==locationGeneration||recorder.state!=='recording')return;gpsGap=true;monitor.reset();deviation.value=false;locationFailure('GPS中断：'+e.message);},{enableHighAccuracy:true,maximumAge:0,timeout:20000});requestWake();
 // #endif
 }
-function toggleRecord(){if(recorder.state==='recording')recorder.pause();else recorder.resume();recordState.value=recorder.state;}
+function startRecord(){if(recorder.state==='recording')return;
+// #ifdef H5
+if(!window.isSecureContext||!navigator.geolocation)return unavailable('无法记录','需要安全连接与浏览器位置权限');const generation=++locationGeneration;locationError.value='正在获取 GPS，尚未开始/恢复记录…';navigator.geolocation.getCurrentPosition(p=>{if(generation!==locationGeneration||page.value!=='record'||document.hidden)return;beginRecord(fixOf(p));},e=>{if(generation===locationGeneration)locationFailure('未开始记录：'+e.message);},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+// #endif
+// #ifdef MP-WEIXIN
+unavailable('小程序 GPS 记录待验证','当前不启动定位或模拟记录。');
+// #endif
+}
+function pauseRecord(){if(recorder.state==='recording')recorder.pause();recordState.value=recorder.state;stopGps();monitor.reset();deviation.value=false;}
+function toggleRecord(){if(recorder.state==='recording')pauseRecord();else startRecord();}
 function stopGps(){locationGeneration++;
 // #ifdef H5
 if(watchId!==undefined)navigator.geolocation.clearWatch(watchId);watchId=undefined;wake?.release();
 // #endif
 wakeActive.value=false;}
-function finishRecord(){if(recorder.state==='recording')recorder.pause();recordState.value=recorder.state;uni.showModal({title:'结束并保存轨迹？',content:`已记录 ${recordPoints.value} 个点，${recordDistance.value.toFixed(2)} 公里。${recordPoints.value<2?'GPS 点不足，确认后仅结束，不保存空轨迹。':''}`,success:result=>{if(!result.confirm)return;if(recordPoints.value>=2){const r=makeRoute(new Date().toLocaleDateString('zh-CN')+' '+activity.value,recorder.segments.filter(s=>s.length),'本地前台 GPS 记录');r.duration=recorder.seconds();r.activity=activity.value;if(!persistRoute(r))return;current.value=r;stopGps();recorder.reset();recordState.value='idle';recorded.value=[];go('detail');}else{stopGps();recorder.reset();recordState.value='idle';recorded.value=[];toast('记录结束，未保存空轨迹');}}});}
+function finishRecord(){pauseRecord();uni.showModal({title:'结束并保存轨迹？',content:`已记录 ${recordPoints.value} 个点，${recordDistance.value.toFixed(2)} 公里。${recordPoints.value<2?'GPS 点不足，确认后仅结束，不保存空轨迹。':''}`,success:result=>{if(!result.confirm)return;if(recordPoints.value>=2){const r=makeRoute(new Date().toLocaleDateString('zh-CN')+' '+activity.value,recorder.segments.filter(s=>s.length),'本地前台 GPS 记录');r.duration=recorder.seconds();r.activity=activity.value;if(!persistRoute(r))return;current.value=r;ensureGeometry(r);stopGps();recorder.reset();recordState.value='idle';recorded.value=[];go('detail');}else{stopGps();recorder.reset();recordState.value='idle';recorded.value=[];toast('记录结束，未保存空轨迹');}}});}
 function leaveRecord(){if(page.value==='record'&&recordState.value!=='idle')return toast('请先暂停并结束记录');locationGeneration++;back();}
 function visibilityChanged(){
 // #ifdef H5
-if(document.hidden&&recorder.state==='recording'){recorder.pause();recordState.value='paused';locationFailure('页面进入后台，已暂停记录；返回后请手动继续。');}
+if(document.hidden){navigationEpoch++;locationGeneration++;if(recorder.state==='recording'){pauseRecord();locationFailure('页面进入后台，已暂停记录；返回后请手动继续。');}}
 // #endif
 }
 function beforeUnload(e:BeforeUnloadEvent){if(recorder.state!=='idle'){e.preventDefault();e.returnValue='';}}

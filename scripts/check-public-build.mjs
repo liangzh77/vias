@@ -97,7 +97,7 @@ for(const rel of files){
   else if(spatialPaths.has(rel)){if(!b.equals(fs.readFileSync(path.join(root,'client/src',rel))))throw Error('Shipped spatial metadata differs');}
   else if(!osmCovers.has(rel)&&!osmShards.has(rel)&&approved[rel]!==sha)throw Error('Unapproved static asset: '+rel);}
  else if(target==='mp-weixin'){
-  if(!/^(app\.(js|json|wxss)|project\.config\.json|common\/[\w.-]+\.js|core\/(track|shard-codec|osm-catalog|public-routes|spatial|map-display)\.js|pages\/index\/index\.(js|json|wxml|wxss)|components\/(Icon|TrackMap|ElevationChart|DetailSheet|HomeMap|RouteCard)\.(js|json|wxml|wxss))$/.test(rel))throw Error('Unknown mini-program output: '+rel);
+  if(!/^(app\.(js|json|wxss)|project\.config\.json|common\/[\w.-]+\.js|core\/(track|shard-codec|osm-catalog|public-routes|spatial|map-display|map-ux)\.js|pages\/index\/index\.(js|json|wxml|wxss)|components\/(Icon|TrackMap|ElevationChart|DetailSheet|HomeMap|RouteCard)\.(js|json|wxml|wxss))$/.test(rel))throw Error('Unknown mini-program output: '+rel);
  }else {
   if(rel!=='index.html'&&!/^assets\/[A-Za-z0-9_.-]+\.(js|css|svg|png|woff2)$/.test(rel))throw Error('Unknown file: '+rel);
   if(inventory[rel]!==sha)throw Error('File not in exact compiler inventory: '+rel);

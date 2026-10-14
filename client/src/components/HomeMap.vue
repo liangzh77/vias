@@ -17,15 +17,15 @@ import {validateSpatial,candidates,clusters,type SpatialRow,type Bounds} from '.
 import type {Route,Point} from '../core/track';
 import {concreteRoutes,recommendRows,verifiedRoutes} from '../core/map-display';
 import classicList from '../core/classic-routes.json';
-const props=defineProps<{tiles:boolean;active:boolean;threshold?:number}>();defineEmits<{(e:'open',route:Route):void}>();
+const props=defineProps<{tiles:boolean;active:boolean;threshold?:number;legacyZoom?:number}>();defineEmits<{(e:'open',route:Route):void}>();
 const selected=ref(''),message=ref('移动地图浏览路线'),error=ref(false);
 const overlays=ref<{id:string;segments:Point[][]}[]>([]),groups=ref<{lat:number;lon:number;count:number}[]>([]),visibleRoutes=ref<Route[]>([]);
 const selectedRoute=computed(()=>osmRoutes.value.find(r=>r.id===selected.value));
 let rows:SpatialRow[]|null=null,epoch=0,controller:AbortController|undefined;
 const savedViewport=ref<{center:[number,number];zoom:number}>();
-let last:{bounds:Bounds;zoom:number}|undefined;
+let last:{bounds:Bounds;zoom:number;scale:number}|undefined;
 async function read(url:string,signal:AbortSignal){const r=await fetch(url,{signal});if(!r.ok)throw Error(`范围数据 HTTP ${r.status}`);return r.json();}
-async function query(v:{bounds:Bounds;zoom:number;center?:[number,number]}){
+async function query(v:{bounds:Bounds;zoom:number;scale:number;center?:[number,number]}){
  if(!props.active)return;
  last=v;savedViewport.value={center:v.center||[(v.bounds[0]+v.bounds[2])/2,(v.bounds[1]+v.bounds[3])/2],zoom:v.zoom};const token=++epoch;controller?.abort();if(!props.active)return;
  controller=new AbortController();const signal=controller.signal;error.value=false;message.value='范围查询中…';overlays.value=[];groups.value=[];visibleRoutes.value=[];
@@ -33,7 +33,7 @@ async function query(v:{bounds:Bounds;zoom:number;center?:[number,number]}){
   await loadIndex();if(token!==epoch)return;
   if(!rows){const [raw,manifest]=await Promise.all([read(baseDir()+'static/osm/spatial.json',signal),read(baseDir()+'static/osm/manifest.json',signal)]);if(token!==epoch)return;if(raw.indexHash!==manifest.index.sha256)throw Error('空间目录与路线版本不匹配');const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(catalogEntries())));if(token!==epoch)return;const signature=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');if(raw.routesHash!==signature)throw Error('空间目录与已加载路线索引不匹配');rows=validateSpatial(raw,osmRoutes.value.map(r=>r.id),catalogShardCounts());}
   const hits=candidates(rows,v.bounds);
-  if(!concreteRoutes(v.zoom,props.threshold)){groups.value=clusters(hits,v.bounds);message.value=`${hits.length} 条 bbox 候选 · 点聚合放大查看更多`;return;}
+  if(!(props.legacyZoom!==undefined?concreteRoutes(v.zoom,props.legacyZoom):v.scale>0&&v.scale<=(props.threshold??2000))){groups.value=clusters(hits,v.bounds);message.value=`${hits.length} 条 bbox 候选 · 点聚合放大查看更多`;return;}
   const chosen=recommendRows(hits,v.bounds,osmRoutes.value,classicList.ids,selected.value);const byId=new Map(osmRoutes.value.map(r=>[r.id,r]));
   const verified=await verifiedRoutes(chosen,v.bounds,ids=>loadOverviewGeometry(ids,signal),signal);if(token!==epoch||!props.active)return;
   const results=verified.routes;
@@ -44,7 +44,7 @@ async function query(v:{bounds:Bounds;zoom:number;center?:[number,number]}){
 }
 function select(id:string){selected.value=id;}
 function retry(){rows=null;if(last)query(last);}
-watch(()=>props.threshold,()=>{if(props.active&&last)query(last);});
+watch([()=>props.threshold,()=>props.legacyZoom],()=>{if(props.active&&last)query(last);});
 watch(()=>props.active,active=>{epoch++;controller?.abort();if(active&&last)query(last);});
 onBeforeUnmount(()=>{epoch++;controller?.abort();rows=null;overlays.value=[];groups.value=[];});
 </script>

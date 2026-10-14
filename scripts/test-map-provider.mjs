@@ -16,7 +16,7 @@ await context.addInitScript(()=>{
   proto.readPixels=function(...args){const t=performance.now(),v=orig.apply(this,args);if(this.canvas.classList.contains('maplibregl-canvas'))window.__reads.push({t,ms:performance.now()-t});return v;};
  }
 });
-const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));
+let diagnosticPage;const page=await context.newPage();diagnosticPage=page;page.on('pageerror',e=>report.errors.push(e.message));
 const state=()=>page.evaluate(()=>({state:document.querySelector('.map-credit')?.dataset.basemap,evidence:JSON.parse(document.querySelector('.maplibregl-canvas')?.dataset.renderEvidence||'null'),paths:[...document.querySelectorAll('.leaflet-overlay-pane path')].map(p=>p.getAttribute('d')),markers:[...document.querySelectorAll('.track-marker-label')].map(x=>x.textContent),reads:window.__reads.length}));
 const ready=()=>page.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='ready',null,{timeout:45000});
 const failed=()=>page.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='failed',null,{timeout:28000});
@@ -67,21 +67,21 @@ try{
  await failed();report.farPan=await state();assert.equal(report.farPan.state,'failed');await shot('mac-offline-pan');
  await context.setOffline(false);for(let i=0;i<5;i++){await drag(40,340,10);await page.waitForTimeout(400);}await ready();report.panRecovery=await state();
  await page.evaluate(()=>{const gl=document.querySelector('.maplibregl-canvas').getContext('webgl2');window.__loss=gl.getExtension('WEBGL_lose_context');window.__loss.loseContext();});await failed();report.contextLost=await state();await page.evaluate(()=>window.__loss.restoreContext());await ready();report.contextRestored=await state();
- for(const delay of [0,100,250]){await page.locator('.map-canvas').dblclick({position:{x:230,y:130}});if(delay)await page.waitForTimeout(delay);await back();await page.waitForTimeout(400);await page.locator('.classic-card').nth(delay%2).click();await ready();}
+ report.stage='transition-unmount';for(const delay of [0,100,250]){report.transitionDelay=delay;await page.locator('.map-canvas').dblclick({position:{x:230,y:130}});if(delay)await page.waitForTimeout(delay);await back();await page.waitForTimeout(400);await page.locator('.classic-card').nth(delay%2).click();await ready();}
  await page.setViewportSize({width:392,height:846});await back();await page.waitForTimeout(500);
- const c2=await browser.newContext(),p2=await c2.newPage();p2.on('pageerror',e=>report.errors.push(e.message));
+ report.stage='delayed-import';const c2=await browser.newContext(),p2=await c2.newPage();diagnosticPage=p2;p2.on('pageerror',e=>report.errors.push(e.message));
  let releaseImport,seen;const importGate=new Promise(r=>releaseImport=r),importSeen=new Promise(r=>seen=r);
  await c2.route('**/components-vector-basemap.*.js',async route=>{seen();await importGate;await route.continue().catch(()=>{});});
  await p2.goto(url);await p2.locator('.classic-card').first().click();await Promise.race([importSeen,new Promise((_,rej)=>setTimeout(()=>rej(Error('missing import interception')),10000))]);await p2.locator('.map-back').click();releaseImport();await p2.waitForTimeout(1500);assert.equal(await p2.locator('.interactive-detail .maplibregl-canvas').count(),0);assert.ok(await p2.locator('.route-preview-card .maplibregl-canvas').count()<=6);await p2.locator('.classic-card').nth(1).click();await p2.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='ready',null,{timeout:45000});assert.equal(await p2.locator('.maplibregl-canvas').count(),1);await c2.close();
  // A single failed tile among successful requests must not poison later viewports.
- const c3=await browser.newContext({viewport:{width:390,height:844}}),p3=await c3.newPage();p3.on('pageerror',e=>report.errors.push(e.message));
+ report.stage='partial-tile-failure';const c3=await browser.newContext({viewport:{width:390,height:844}}),p3=await c3.newPage();diagnosticPage=p3;p3.on('pageerror',e=>report.errors.push(e.message));
  let aborted=false;
  await c3.route('**/*.pbf',async route=>{if(!aborted&&await p3.locator('.interactive-detail').count()&&route.request().url().includes('/planet/')){aborted=true;await route.abort('failed');}else await route.continue();});
  await p3.goto(url);await p3.locator('.classic-card').first().click();
  await p3.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='failed',null,{timeout:28000});assert.ok(aborted,'one vector tile failed');
  report.partialFailure=await p3.evaluate(()=>document.querySelector('.maplibregl-canvas').dataset.renderEvidence);
- await p3.mouse.move(195,130);await p3.mouse.wheel(0,500);
+ report.stage='partial-tile-recovery';await p3.mouse.move(195,130);await p3.mouse.wheel(0,500);
  await p3.waitForFunction(()=>document.querySelector('.map-credit')?.dataset.basemap==='ready',null,{timeout:45000});report.partialRecovery=true;await c3.close();
  assert.deepEqual(report.errors,[]);report.finished=new Date().toISOString();report.pass=true;
-}catch(e){report.failure=String(e);report.failureState=await state().catch(()=>null);await shot('mac-failure').catch(()=>{});process.exitCode=1;}finally{fs.writeFileSync(`${out}/mac-behavior.json`,JSON.stringify(report,null,2));await context.setOffline(false).catch(()=>{});await browser.close();}
+}catch(e){report.diagnostic=await diagnosticPage.evaluate(()=>({state:document.querySelector('.map-credit')?.dataset.basemap,evidence:document.querySelector('.maplibregl-canvas')?.dataset.renderEvidence,viewport:document.querySelector('.map-shell')?.dataset.viewport})).catch(()=>null);report.failure=String(e);report.failureState=await state().catch(()=>null);await shot('mac-failure').catch(()=>{});process.exitCode=1;}finally{fs.writeFileSync(`${out}/mac-behavior.json`,JSON.stringify(report,null,2));await context.setOffline(false).catch(()=>{});await browser.close();}
 console.log(JSON.stringify({pass:report.pass,failure:report.failure,dragReads:report.drag?.reads.length,initialTimeoutMs:report.initialTimeout?.ms,visibleRouteFailure:report.visibleRouteFailure?.state,farPan:report.farPan?.state,errors:report.errors},null,2));
